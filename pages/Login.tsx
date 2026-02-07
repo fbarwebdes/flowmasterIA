@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
-import { Zap, ArrowRight, Loader2, AlertCircle, CheckCircle2, UserPlus, LogIn, Sun, Moon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Zap, ArrowRight, Loader2, AlertCircle, CheckCircle2, UserPlus, LogIn, Sun, Moon, Lock } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useTheme } from '../components/ui/ThemeContext';
 
-export const Login: React.FC = () => {
+interface LoginProps {
+  initialMode?: 'signin' | 'signup' | 'forgot' | 'reset';
+  onResetComplete?: () => void;
+}
+
+export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetComplete }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'reset'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   const translateAuthError = (error: any) => {
     const msg = error.message.toLowerCase();
@@ -42,9 +52,22 @@ export const Login: React.FC = () => {
     setMessage(null);
 
     try {
-      if (mode === 'forgot') {
+      if (mode === 'reset') {
+        if (password !== confirmPassword) {
+          throw new Error('As senhas não coincidem.');
+        }
+        if (password.length < 6) {
+          throw new Error('A senha deve ter no mínimo 6 caracteres.');
+        }
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setMessage("✅ Senha redefinida com sucesso! Você já pode fazer login.");
+        setTimeout(() => {
+          onResetComplete?.();
+        }, 2000);
+      } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + '/reset-password',
+          redirectTo: window.location.origin,
         });
         if (error) throw error;
         setMessage("📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.");
@@ -69,7 +92,7 @@ export const Login: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setError(translateAuthError(err));
+      setError(err.message?.includes('senhas') ? err.message : translateAuthError(err));
     } finally {
       setIsLoading(false);
     }
@@ -111,34 +134,36 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Mode Toggle Tabs */}
-        <div className={`mt-8 flex rounded-xl p-1 border backdrop-blur-sm
-          ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white/80 border-slate-200 shadow-lg'}`}>
-          <button
-            onClick={() => { setMode('signin'); setError(null); setMessage(null); }}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
-              ${mode === 'signin'
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-          >
-            <LogIn size={18} /> Entrar
-          </button>
-          <button
-            onClick={() => { setMode('signup'); setError(null); setMessage(null); }}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
-              ${mode === 'signup'
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-          >
-            <UserPlus size={18} /> Criar Conta
-          </button>
-        </div>
+        {/* Mode Toggle Tabs - hide in reset mode */}
+        {mode !== 'reset' && (
+          <div className={`mt-8 flex rounded-xl p-1 border backdrop-blur-sm
+            ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white/80 border-slate-200 shadow-lg'}`}>
+            <button
+              onClick={() => { setMode('signin'); setError(null); setMessage(null); }}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                ${mode === 'signin'
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              <LogIn size={18} /> Entrar
+            </button>
+            <button
+              onClick={() => { setMode('signup'); setError(null); setMessage(null); }}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                ${mode === 'signup'
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              <UserPlus size={18} /> Criar Conta
+            </button>
+          </div>
+        )}
 
         {/* Form Card */}
         <div className={`mt-6 py-8 px-6 shadow-2xl sm:rounded-2xl border backdrop-blur-xl
           ${theme === 'dark' ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white/90 border-slate-200'}`}>
           <h2 className={`text-xl font-semibold mb-6 text-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-            {mode === 'signin' ? 'Acesse sua conta' : mode === 'signup' ? 'Crie sua conta gratuita' : 'Recuperar senha'}
+            {mode === 'signin' ? 'Acesse sua conta' : mode === 'signup' ? 'Crie sua conta gratuita' : mode === 'reset' ? 'Redefinir Senha' : 'Recuperar senha'}
           </h2>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -163,30 +188,32 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label htmlFor="email" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                E-mail
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
-                  ${theme === 'dark'
-                    ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
-                    : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
-              />
-            </div>
+            {mode !== 'reset' && (
+              <div>
+                <label htmlFor="email" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                  E-mail
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+                    ${theme === 'dark'
+                      ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
+                      : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
+                />
+              </div>
+            )}
 
-            {mode !== 'forgot' && (
+            {(mode === 'signin' || mode === 'signup' || mode === 'reset') && (
               <div>
                 <label htmlFor="password" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                  Senha
+                  {mode === 'reset' ? 'Nova Senha' : 'Senha'}
                 </label>
                 <input
                   id="password"
@@ -196,7 +223,29 @@ export const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
+                  placeholder={mode === 'reset' ? 'Mínimo 6 caracteres' : mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
+                  className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+                    ${theme === 'dark'
+                      ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
+                      : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
+                />
+              </div>
+            )}
+
+            {mode === 'reset' && (
+              <div>
+                <label htmlFor="confirmPassword" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Confirmar Nova Senha
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
                   className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
                     ${theme === 'dark'
                       ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
@@ -256,7 +305,7 @@ export const Login: React.FC = () => {
                 <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  {mode === 'signin' ? 'Entrar' : mode === 'signup' ? 'Criar minha conta' : 'Enviar link de recuperação'}
+                  {mode === 'signin' ? 'Entrar' : mode === 'signup' ? 'Criar minha conta' : mode === 'reset' ? 'Redefinir Senha' : 'Enviar link de recuperação'}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </>
               )}

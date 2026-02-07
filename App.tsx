@@ -19,21 +19,33 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [forceLogout, setForceLogout] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   useEffect(() => {
+    // Check for recovery mode in URL hash (from password reset email)
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setIsRecoveryMode(true);
+    }
+
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) setForceLogout(false); // Reset forceLogout when session exists
+      if (session) setForceLogout(false);
       setLoading(false);
     });
 
     // Listen for changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (session) setForceLogout(false); // Reset forceLogout when user logs in
+      if (session) setForceLogout(false);
+
+      // Handle password recovery event
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -58,6 +70,11 @@ const App: React.FC = () => {
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
       </div>
     );
+  }
+
+  // Show password reset form when in recovery mode
+  if (isRecoveryMode) {
+    return <Login initialMode="reset" onResetComplete={() => { setIsRecoveryMode(false); window.location.hash = ''; }} />;
   }
 
   // Require real authentication - no bypass
