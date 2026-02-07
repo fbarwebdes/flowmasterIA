@@ -60,17 +60,8 @@ const App: React.FC = () => {
     );
   }
 
-  // BYPASS: Mock user for development to avoid Supabase Rate Limits
-  const devUser: User = {
-    name: 'Fabricio Puga',
-    email: 'fabricio@flowmaster.ia',
-    avatar: 'https://ui-avatars.com/api/?name=Fabricio+Puga&background=059669&color=fff'
-  };
-
-  const activeUser = user || devUser;
-
-  // Show login if user explicitly logged out
-  if (forceLogout) {
+  // Require real authentication - no bypass
+  if (!session || forceLogout) {
     return <Login />;
   }
 
@@ -102,7 +93,7 @@ const App: React.FC = () => {
       currentView={currentView}
       onChangeView={setCurrentView}
       onLogout={handleLogout}
-      user={activeUser}
+      user={user!}
     >
       {renderContent()}
     </Layout>

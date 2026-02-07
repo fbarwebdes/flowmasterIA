@@ -5,7 +5,7 @@ import { useTheme } from '../components/ui/ThemeContext';
 
 export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -42,7 +42,14 @@ export const Login: React.FC = () => {
     setMessage(null);
 
     try {
-      if (mode === 'signin') {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password',
+        });
+        if (error) throw error;
+        setMessage("📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+        setMode('signin');
+      } else if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -131,7 +138,7 @@ export const Login: React.FC = () => {
         <div className={`mt-6 py-8 px-6 shadow-2xl sm:rounded-2xl border backdrop-blur-xl
           ${theme === 'dark' ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white/90 border-slate-200'}`}>
           <h2 className={`text-xl font-semibold mb-6 text-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-            {mode === 'signin' ? 'Acesse sua conta' : 'Crie sua conta gratuita'}
+            {mode === 'signin' ? 'Acesse sua conta' : mode === 'signup' ? 'Crie sua conta gratuita' : 'Recuperar senha'}
           </h2>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -176,25 +183,51 @@ export const Login: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                Senha
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
-                className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
-                  ${theme === 'dark'
-                    ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
-                    : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
-              />
-            </div>
+            {mode !== 'forgot' && (
+              <div>
+                <label htmlFor="password" className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Senha
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
+                  className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+                    ${theme === 'dark'
+                      ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
+                      : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
+                />
+              </div>
+            )}
+
+            {mode === 'signin' && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setError(null); setMessage(null); }}
+                  className={`text-sm font-medium hover:underline ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
+            {mode === 'forgot' && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setMode('signin'); setError(null); setMessage(null); }}
+                  className={`text-sm font-medium hover:underline ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}
+                >
+                  ← Voltar ao login
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-xl bg-red-500/10 p-4 border border-red-500/30">
@@ -223,7 +256,7 @@ export const Login: React.FC = () => {
                 <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  {mode === 'signin' ? 'Entrar' : 'Criar minha conta'}
+                  {mode === 'signin' ? 'Entrar' : mode === 'signup' ? 'Criar minha conta' : 'Enviar link de recuperação'}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </>
               )}
