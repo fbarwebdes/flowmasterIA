@@ -8,7 +8,6 @@ import { Links } from './pages/Links';
 import { Integrations } from './pages/Integrations';
 import { Settings } from './pages/Settings';
 import { SalesTemplates } from './pages/SalesTemplates';
-import { QuickPost } from './pages/QuickPost';
 import { ViewState, User } from './types';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -98,8 +97,6 @@ const App: React.FC = () => {
         return <Settings />;
       case 'templates':
         return <SalesTemplates />;
-      case 'quickpost':
-        return <QuickPost />;
       default:
         return <Dashboard />;
     }

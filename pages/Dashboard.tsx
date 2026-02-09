@@ -132,7 +132,7 @@ export const Dashboard: React.FC = () => {
               <div className="p-8 text-center text-[var(--color-text-muted)]">
                 <Rocket className="mx-auto mb-3 text-slate-300" size={40} />
                 <p>Nenhum produto cadastrado</p>
-                <p className="text-sm mt-1">Use o Quick Post para adicionar!</p>
+                <p className="text-sm mt-1">Importe produtos na página Meus Produtos!</p>
               </div>
             ) : (
               recentProducts.map(product => (

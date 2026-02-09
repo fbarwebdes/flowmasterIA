@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Product, AppSettings } from '../types';
-import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule } from '../services/mockService';
-import { ProductForm } from './ProductForm';
-import { Plus, Search, Filter, ExternalLink, Trash2, MessageCircle, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash } from 'lucide-react';
+import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule, extractFromLink, saveProduct } from '../services/mockService';
+import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3 } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
   const [filter, setFilter] = useState('');
 
   // Copy Generation State
@@ -21,6 +19,17 @@ export const Products: React.FC = () => {
   // Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+
+  // Quick Post (Link Import) State
+  const [isQuickPostOpen, setIsQuickPostOpen] = useState(false);
+  const [quickPostLink, setQuickPostLink] = useState('');
+  const [quickPostLoading, setQuickPostLoading] = useState(false);
+  const [quickPostData, setQuickPostData] = useState<{ title: string; price: number | null; image: string; platform: string } | null>(null);
+  const [quickPostError, setQuickPostError] = useState<string | null>(null);
+  const [quickPostSaving, setQuickPostSaving] = useState(false);
+  const [quickPostSaved, setQuickPostSaved] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [manualPrice, setManualPrice] = useState('');
 
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -114,9 +123,71 @@ export const Products: React.FC = () => {
     loadData();
   }, []);
 
-  const handleProductAdded = () => {
-    setIsAdding(false);
-    loadData(); // Reload list to see new item
+  // Quick Post handlers
+  const handleQuickPostGenerate = async () => {
+    if (!quickPostLink) {
+      setQuickPostError('Por favor, cole um link.');
+      return;
+    }
+    setQuickPostError(null);
+    setQuickPostLoading(true);
+    setQuickPostData(null);
+    setQuickPostSaved(false);
+
+    try {
+      const data = await extractFromLink(quickPostLink);
+      if (!data.title) {
+        throw new Error('Não foi possível extrair dados deste link.');
+      }
+      setQuickPostData(data);
+      setManualPrice(data.price?.toString() || '');
+      setEditingPrice(false);
+    } catch (err: any) {
+      setQuickPostError(err.message || 'Falha ao buscar dados do produto.');
+    } finally {
+      setQuickPostLoading(false);
+    }
+  };
+
+  const getQuickPostPrice = () => {
+    if (manualPrice) {
+      return parseFloat(manualPrice.replace(',', '.'));
+    }
+    return quickPostData?.price || 0;
+  };
+
+  const handleQuickPostSave = async () => {
+    if (!quickPostData) return;
+    setQuickPostSaving(true);
+    try {
+      await saveProduct({
+        title: quickPostData.title,
+        price: getQuickPostPrice(),
+        image: quickPostData.image,
+        affiliate_link: quickPostLink,
+        platform: quickPostData.platform as Product['platform'],
+        active: true,
+      });
+      setQuickPostSaved(true);
+      setTimeout(() => {
+        setQuickPostSaved(false);
+      }, 3000);
+      loadData();
+    } catch (err) {
+      setQuickPostError('Falha ao salvar produto.');
+    } finally {
+      setQuickPostSaving(false);
+    }
+  };
+
+  const resetQuickPost = () => {
+    setQuickPostLink('');
+    setQuickPostData(null);
+    setQuickPostError(null);
+    setQuickPostSaving(false);
+    setQuickPostSaved(false);
+    setEditingPrice(false);
+    setManualPrice('');
   };
 
   const generateFromTemplate = (product: Product) => {
@@ -250,13 +321,7 @@ export const Products: React.FC = () => {
     return matchesText && matchesPlatform;
   });
 
-  if (isAdding) {
-    return (
-      <div className="max-w-2xl mx-auto mt-6">
-        <ProductForm onSuccess={handleProductAdded} onCancel={() => setIsAdding(false)} />
-      </div>
-    );
-  }
+
 
 
   // Helper for PT-BR currency
@@ -279,11 +344,11 @@ export const Products: React.FC = () => {
             <span>Importar Vendas</span>
           </button>
           <button
-            onClick={() => setIsAdding(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors"
+            onClick={() => { resetQuickPost(); setIsQuickPostOpen(true); }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium"
           >
-            <Plus size={20} />
-            <span>Novo Produto</span>
+            <Rocket size={20} />
+            <span>Quick Post</span>
           </button>
         </div>
       </div>
@@ -469,39 +534,168 @@ export const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* Import Modal */}
+      {/* Import Modal (Shopee Auto) */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900">Importar Produtos</h3>
+              <h3 className="font-bold text-lg text-slate-900">Importar Vendas — Shopee</h3>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-slate-500 mb-4">Selecione a plataforma para buscar novos produtos usando suas credenciais configuradas.</p>
+              <p className="text-sm text-slate-500 mb-4">Importação automática via API da Shopee usando suas credenciais configuradas.</p>
 
-              <div className="space-y-3">
-                {['shopee', 'amazon', 'mercadolivre'].map(p => {
-                  const config = settings?.integrations?.find(i => i.id === p);
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => handleImport(p)}
-                      disabled={!config?.isEnabled || isImporting}
-                      className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${!config?.isEnabled
-                        ? 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'
-                        : 'border-slate-200 hover:border-indigo-500 hover:bg-indigo-50'
-                        }`}
-                    >
-                      <span className="font-medium capitalize text-slate-700">{p}</span>
-                      {isImporting ? <Loader2 className="animate-spin text-indigo-500" size={18} /> : (
-                        !config?.isEnabled ? <span className="text-xs text-red-400">Não configurado</span> : <ExternalLink size={18} className="text-slate-400" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              {(() => {
+                const config = settings?.integrations?.find(i => i.id === 'shopee');
+                return (
+                  <button
+                    onClick={() => handleImport('shopee')}
+                    disabled={!config?.isEnabled || isImporting}
+                    className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${!config?.isEnabled
+                      ? 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'
+                      : 'border-slate-200 hover:border-emerald-500 hover:bg-emerald-50'
+                      }`}
+                  >
+                    <span className="font-medium text-slate-700">Shopee</span>
+                    {isImporting ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : (
+                      !config?.isEnabled ? <span className="text-xs text-red-400">Não configurado</span> : <ExternalLink size={18} className="text-slate-400" />
+                    )}
+                  </button>
+                );
+              })()}
+
+              <p className="text-xs text-slate-400 mt-4 text-center">
+                Para Amazon e Mercado Livre, use o botão <strong>Quick Post</strong> para importar via link.
+              </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Post Modal (Link Import) */}
+      {isQuickPostOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
+              <div className="flex items-center space-x-2">
+                <div className="bg-white p-2 rounded-lg shadow-sm">
+                  <Rocket size={20} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Quick Post</h2>
+                  <p className="text-xs text-emerald-700">Cole o link e importe automaticamente</p>
+                </div>
+              </div>
+              <button onClick={() => setIsQuickPostOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Link Input */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Link do Produto (Amazon, Mercado Livre, Shopee, etc.)
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="url"
+                    value={quickPostLink}
+                    onChange={(e) => setQuickPostLink(e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && handleQuickPostGenerate()}
+                  />
+                  <button
+                    onClick={handleQuickPostGenerate}
+                    disabled={quickPostLoading || !quickPostLink}
+                    className="bg-emerald-600 text-white px-5 py-3 rounded-lg hover:bg-emerald-700 transition-colors flex items-center font-medium shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  >
+                    {quickPostLoading ? <Loader2 className="animate-spin" size={20} /> : <Rocket size={20} />}
+                  </button>
+                </div>
+                {quickPostError && (
+                  <div className="mt-3 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-center">
+                    <AlertCircle size={16} className="mr-2 flex-shrink-0" /> {quickPostError}
+                  </div>
+                )}
+              </div>
+
+              {/* Product Preview */}
+              {quickPostData && (
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-4">
+                  <h4 className="font-semibold text-slate-700 flex items-center text-sm">
+                    <ImageIcon className="mr-2 text-blue-500" size={18} /> Dados do Produto
+                  </h4>
+                  <div className="flex gap-4">
+                    {quickPostData.image ? (
+                      <img src={quickPostData.image} alt="Produto" className="w-20 h-20 rounded-lg object-cover border flex-shrink-0" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="text-slate-400" size={28} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 text-sm line-clamp-2">{quickPostData.title}</p>
+                      {/* Editable Price */}
+                      <div className="mt-2 flex items-center gap-2">
+                        {editingPrice ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-lg font-bold text-emerald-600">R$</span>
+                            <input
+                              type="text"
+                              value={manualPrice}
+                              onChange={(e) => setManualPrice(e.target.value)}
+                              onBlur={() => setEditingPrice(false)}
+                              onKeyDown={(e) => e.key === 'Enter' && setEditingPrice(false)}
+                              autoFocus
+                              className="w-24 px-2 py-1 text-lg font-bold text-emerald-600 border border-emerald-500 rounded-lg bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              placeholder="0,00"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingPrice(true)}
+                            className="text-xl font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 group"
+                            title="Clique para editar o preço"
+                          >
+                            R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                            <Edit3 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-amber-600 mt-1">⚠️ Clique no preço para corrigir se necessário</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 rounded text-xs text-slate-600">
+                        {quickPostData.platform}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save Footer */}
+            {quickPostData && (
+              <div className="p-5 border-t border-slate-100 bg-slate-50">
+                <button
+                  onClick={handleQuickPostSave}
+                  disabled={quickPostSaving || quickPostSaved}
+                  className={`w-full px-4 py-3 rounded-lg font-medium flex items-center justify-center transition-all
+                    ${quickPostSaved
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'}
+                    disabled:opacity-70`}
+                >
+                  {quickPostSaving ? (
+                    <><Loader2 className="animate-spin mr-2" size={18} /> Salvando...</>
+                  ) : quickPostSaved ? (
+                    <><CheckCircle2 className="mr-2" size={18} /> Salvo em Meus Produtos!</>
+                  ) : (
+                    <><Save className="mr-2" size={18} /> Salvar em Meus Produtos</>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

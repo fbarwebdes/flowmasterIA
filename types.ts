@@ -60,4 +60,4 @@ export interface AppSettings {
   integrations?: IntegrationConfig[]; // Store integrations here
 }
 
-export type ViewState = 'dashboard' | 'products' | 'schedule' | 'links' | 'integrations' | 'settings' | 'templates' | 'quickpost';
+export type ViewState = 'dashboard' | 'products' | 'schedule' | 'links' | 'integrations' | 'settings' | 'templates';

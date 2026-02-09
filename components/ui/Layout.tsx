@@ -48,7 +48,6 @@ const menuGroups: MenuGroup[] = [
     title: 'Produtos',
     items: [
       { view: 'products', label: 'Meus Produtos', icon: Package },
-      { view: 'quickpost', label: 'Quick Post', icon: Rocket },
       { view: 'integrations', label: 'Integrações', icon: Puzzle },
     ],
   },
