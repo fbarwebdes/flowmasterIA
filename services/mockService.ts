@@ -299,27 +299,28 @@ export const fetchSettings = async (): Promise<AppSettings> => {
 export const saveSettings = async (settings: AppSettings): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    // Fallback if not logged in (though app seems to require login?)
+    // Fallback if not logged in
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     return;
   }
 
-  // Check if row exists to update or insert
-  const { data: existing } = await supabase
+  // Use upsert to reliably insert or update in a single operation
+  const { error } = await supabase
     .from('app_settings')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+    .upsert(
+      {
+        user_id: user.id,
+        settings,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'user_id' }
+    );
 
-  if (existing) {
-    await supabase
-      .from('app_settings')
-      .update({ settings, updated_at: new Date() })
-      .eq('id', existing.id);
-  } else {
-    await supabase
-      .from('app_settings')
-      .insert({ user_id: user.id, settings });
+  if (error) {
+    console.error('Error saving settings:', error);
+    // Fallback to localStorage so data isn't lost
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    throw new Error('Falha ao salvar configurações');
   }
 };
 

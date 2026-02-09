@@ -56,7 +56,7 @@ export const Integrations: React.FC = () => {
         setSettings({ ...settings, integrations: newIntegrations });
     };
 
-    const toggleIntegration = (id: IntegrationId) => {
+    const toggleIntegration = async (id: IntegrationId) => {
         if (!settings) return;
         const currentIntegrations = settings.integrations || [];
         const index = currentIntegrations.findIndex(i => i.id === id);
@@ -75,7 +75,15 @@ export const Integrations: React.FC = () => {
                 credentials: {}
             });
         }
-        setSettings({ ...settings, integrations: newIntegrations });
+        const updatedSettings = { ...settings, integrations: newIntegrations };
+        setSettings(updatedSettings);
+
+        // Auto-save the toggle state immediately so it persists
+        try {
+            await saveSettings(updatedSettings);
+        } catch (e) {
+            console.error('Error auto-saving toggle state:', e);
+        }
     };
 
     const getConfig = (id: IntegrationId) => {
