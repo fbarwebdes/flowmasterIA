@@ -287,7 +287,7 @@ export const fetchSettings = async (): Promise<AppSettings> => {
     .from('app_settings')
     .select('settings')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return defaultSettings;

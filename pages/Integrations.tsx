@@ -24,9 +24,15 @@ export const Integrations: React.FC = () => {
         if (!settings) return;
 
         setSaving(true);
-        await saveSettings(settings);
-        setSaving(false);
-        alert('Credenciais salvas com sucesso!');
+        try {
+            await saveSettings(settings);
+            alert('Credenciais salvas com sucesso!');
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            alert('Erro ao salvar. Tente novamente.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const updateIntegration = (id: IntegrationId, field: string, value: string) => {
