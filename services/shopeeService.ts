@@ -4,6 +4,11 @@
 import { supabase } from './supabase';
 import { Product, AppSettings } from '../types';
 
+// Edge Function URL - uses direct fetch to avoid JWT relay issues
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/shopee-products`;
+
 interface ShopeeProduct {
   item_id: number;
   item_name: string;
@@ -19,7 +24,6 @@ interface ShopeeCredentials {
   appSecret: string;
 }
 
-// Echoing the instruction: changing getShopeeCredentials to async and using fetchSettings
 import { fetchSettings } from './mockService';
 
 // Fetch credentials from DB settings
@@ -37,6 +41,26 @@ export const getShopeeCredentials = async (): Promise<ShopeeCredentials | null> 
   };
 };
 
+// Direct fetch to Edge Function (bypasses supabase.functions.invoke JWT issues)
+async function callEdgeFunction(body: Record<string, any>): Promise<any> {
+  const response = await fetch(EDGE_FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('Edge Function HTTP Error:', response.status, text);
+    throw new Error(`Edge Function retornou erro ${response.status}`);
+  }
+
+  return response.json();
+}
+
 // Fetch products from Shopee via Edge Function
 export const fetchShopeeProducts = async (keyword: string = ''): Promise<ShopeeProduct[]> => {
   const credentials = await getShopeeCredentials();
@@ -46,21 +70,13 @@ export const fetchShopeeProducts = async (keyword: string = ''): Promise<ShopeeP
   }
 
   try {
-    // Call Edge Function
-    const { data, error } = await supabase.functions.invoke('shopee-products', {
-      body: {
-        appId: credentials.appId,
-        appSecret: credentials.appSecret,
-        action: 'search',
-        keyword: keyword,
-        limit: 50 // Limit to 50 products per import
-      }
+    const data = await callEdgeFunction({
+      appId: credentials.appId,
+      appSecret: credentials.appSecret,
+      action: 'search',
+      keyword: keyword,
+      limit: 50
     });
-
-    if (error) {
-      console.error('Edge Function Error:', error);
-      throw new Error('Falha ao conectar com a API Shopee');
-    }
 
     if (data.warning) {
       console.warn('Shopee API Warning:', data.warning);
@@ -155,20 +171,13 @@ export const importShopeeProducts = async (products: ShopeeProduct[]): Promise<n
 // Validate Shopee credentials against the Edge Function
 export const validateShopeeCredentials = async (appId: string, appSecret: string): Promise<{ valid: boolean; message?: string }> => {
   try {
-    const { data, error } = await supabase.functions.invoke('shopee-products', {
-      body: {
-        appId,
-        appSecret,
-        action: 'validate',
-        keyword: 'celular',
-        limit: 1
-      }
+    const data = await callEdgeFunction({
+      appId,
+      appSecret,
+      action: 'validate',
+      keyword: 'celular',
+      limit: 1
     });
-
-    if (error) {
-      console.error('Validation Error:', error);
-      return { valid: false, message: 'Erro de conexão com o servidor' };
-    }
 
     // Check if the source is from the real API
     if (data.source === 'shopee_affiliate_api') {
