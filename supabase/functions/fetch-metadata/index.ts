@@ -92,9 +92,30 @@ Deno.serve(async (req: Request) => {
         // --- IMAGE ---
         let image = getMeta('og:image') || getMeta('twitter:image') || '';
 
-        // Amazon-specific image extraction
+        // Amazon-specific image extraction - multiple fallbacks
         if (!image) {
-            // Try data-a-dynamic-image (JSON with image URLs)
+            // Try data-old-hires attribute (high-res image on main product image)
+            const oldHires = html.match(/data-old-hires=["']([^"']+)["']/i);
+            if (oldHires) {
+                image = oldHires[1];
+            }
+        }
+        if (!image) {
+            // Try "hiRes":"https://..." in JavaScript (Amazon image gallery data)
+            const hiRes = html.match(/"hiRes"\s*:\s*"(https:\/\/[^"]+)"/i);
+            if (hiRes) {
+                image = hiRes[1];
+            }
+        }
+        if (!image) {
+            // Try "large":"https://..." in colorImages JSON
+            const largImg = html.match(/"large"\s*:\s*"(https:\/\/[^"]+)"/i);
+            if (largImg) {
+                image = largImg[1];
+            }
+        }
+        if (!image) {
+            // Try data-a-dynamic-image (JSON with image URLs as keys)
             const dynamicImg = html.match(/data-a-dynamic-image=["']\{["']([^"']+)["']/i);
             if (dynamicImg) {
                 image = dynamicImg[1];
@@ -102,7 +123,7 @@ Deno.serve(async (req: Request) => {
         }
         if (!image) {
             // Try landingImage id
-            const landingImg = html.match(/id=["']landingImage["'][^>]+src=["']([^"']+)["']/i);
+            const landingImg = html.match(/id=["']landingImage["'][^>]+(?:src|data-old-hires)=["']([^"']+)["']/i);
             if (landingImg) {
                 image = landingImg[1];
             }
@@ -112,6 +133,13 @@ Deno.serve(async (req: Request) => {
             const imgBlk = html.match(/id=["']imgBlkFront["'][^>]+src=["']([^"']+)["']/i);
             if (imgBlk) {
                 image = imgBlk[1];
+            }
+        }
+        if (!image) {
+            // Generic fallback: find any Amazon CDN product image URL
+            const amazonCdn = html.match(/(https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9._%-]+\.(?:jpg|png|webp))/i);
+            if (amazonCdn) {
+                image = amazonCdn[1];
             }
         }
 
