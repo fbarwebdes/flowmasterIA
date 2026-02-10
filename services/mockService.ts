@@ -1,5 +1,7 @@
-import { Product, DashboardStats, Schedule, AppSettings } from '../types';
+import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig } from '../types';
 import { supabase } from './supabase';
+
+const SETTINGS_KEY = 'flowmaster_settings';
 
 // ================= PRODUCTS =================
 
@@ -168,10 +170,10 @@ export const fetchSchedules = async (): Promise<Schedule[]> => {
 
         // Queue update to DB
         updates.push(
-          supabase
+          Promise.resolve(supabase
             .from('schedules')
             .update({ scheduled_time: newIso })
-            .eq('id', schedule.id)
+            .eq('id', schedule.id))
         );
 
         // Update local object
@@ -281,19 +283,32 @@ const defaultSettings: AppSettings = {
 
 export const fetchSettings = async (): Promise<AppSettings> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return defaultSettings;
 
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('settings')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Default values
+  let settings: AppSettings = { ...defaultSettings };
 
-  if (error || !data) {
-    return defaultSettings;
+  if (user) {
+    // Populate defaults from user metadata
+    settings.displayName = user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário';
+
+    // Fetch stored settings
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('settings')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (data?.settings) {
+      settings = { ...settings, ...data.settings };
+    }
+
+    // Ensure display name is current if not explicitly set in settings (or if we want to sync)
+    if (!settings.displayName) {
+      settings.displayName = user.user_metadata?.name;
+    }
   }
 
-  return { ...defaultSettings, ...data.settings };
+  return settings;
 };
 
 export const saveSettings = async (settings: AppSettings): Promise<void> => {
@@ -304,7 +319,15 @@ export const saveSettings = async (settings: AppSettings): Promise<void> => {
     return;
   }
 
-  // Use upsert to reliably insert or update in a single operation
+  // Update Auth User Metadata if displayName changed
+  if (settings.displayName) {
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { name: settings.displayName }
+    });
+    if (authError) console.error('Error updating auth metadata:', authError);
+  }
+
+  // Save app settings to DB
   const { error } = await supabase
     .from('app_settings')
     .upsert(
@@ -318,7 +341,7 @@ export const saveSettings = async (settings: AppSettings): Promise<void> => {
 
   if (error) {
     console.error('Error saving settings:', error);
-    // Fallback to localStorage so data isn't lost
+    // Fallback to localStorage
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     throw new Error('Falha ao salvar configurações');
   }
@@ -406,7 +429,7 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
 
 import { fetchShopeeProducts, importShopeeProducts } from './shopeeService';
 
-const SETTINGS_KEY = 'flowmaster_settings';
+// SETTINGS_KEY moved to top
 
 export const importProductsFromIntegration = async (integrationId: string): Promise<number> => {
   const settings = await fetchSettings();

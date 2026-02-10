@@ -57,6 +57,7 @@ export interface AppSettings {
   salesTemplate: string;
   whatsappNumber: string;
   autoReply: boolean;
+  displayName?: string; // New field for user's display name
   integrations?: IntegrationConfig[]; // Store integrations here
 }
 
