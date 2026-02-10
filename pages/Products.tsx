@@ -159,14 +159,18 @@ export const Products: React.FC = () => {
   const handleQuickPostSave = async () => {
     if (!quickPostData) return;
     setQuickPostSaving(true);
+    const price = getQuickPostPrice();
+    const oldPrice = price * 1.2;
+    const salesCopy = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
     try {
       await saveProduct({
         title: quickPostData.title,
-        price: getQuickPostPrice(),
+        price: price,
         image: quickPostData.image,
         affiliate_link: quickPostLink,
         platform: quickPostData.platform as Product['platform'],
         active: true,
+        salesCopy: salesCopy,
       });
       setQuickPostSaved(true);
       setTimeout(() => {
@@ -190,13 +194,15 @@ export const Products: React.FC = () => {
     setManualPrice('');
   };
 
+  const formatPrice = (price: number) => price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const generateFromTemplate = (product: Product) => {
     if (!settings) return '';
     let text = settings.salesTemplate;
     text = text.replace('{titulo}', product.title);
-    text = text.replace('{preco}', product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
-    // Mock old price logic (just add 20%)
-    text = text.replace('{preco_antigo}', (product.price * 1.2).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+    text = text.replace('{preco}', formatPrice(product.price));
+    // Old price = current price + 20% markup
+    text = text.replace('{preco_antigo}', formatPrice(product.price * 1.2));
     text = text.replace('{link}', product.affiliate_link);
     text = text.replace('{plataforma}', product.platform);
     return text;
@@ -686,20 +692,25 @@ export const Products: React.FC = () => {
                     {quickPostData.image && (
                       <img src={quickPostData.image} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
                     )}
-                    <p className="text-sm font-medium text-slate-900 mb-1">
-                      🔥 *{quickPostData.title}*
+                    <p className="text-sm font-bold text-slate-900 mb-2">🔥 OFERTA IMPERDÍVEL! 🔥</p>
+                    <p className="text-sm text-slate-800 mb-2">{quickPostData.title}</p>
+                    <p className="text-sm text-slate-500 mb-0.5">
+                      💰 De: R$ {formatPrice(getQuickPostPrice() * 1.2)}
                     </p>
-                    <p className="text-sm text-emerald-600 font-bold mb-1">
-                      💰 R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                    <p className="text-sm text-emerald-600 font-bold mb-2">
+                      ✅ Por apenas: R$ {formatPrice(getQuickPostPrice())}
                     </p>
-                    <p className="text-xs text-blue-600 break-all mb-1">
-                      🔗 {quickPostLink.length > 50 ? quickPostLink.substring(0, 50) + '...' : quickPostLink}
+                    <p className="text-sm text-slate-700 mb-0.5">🛒 Garanta o seu agora:</p>
+                    <p className="text-xs text-blue-600 break-all">
+                      {quickPostLink.length > 50 ? quickPostLink.substring(0, 50) + '...' : quickPostLink}
                     </p>
                     <p className="text-[10px] text-slate-400 text-right mt-1">agora</p>
                   </div>
                   <button
                     onClick={() => {
-                      const text = `🔥 *${quickPostData.title}*\n\n💰 R$ ${getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}\n\n🔗 ${quickPostLink}\n\n✅ Compre agora!`;
+                      const price = getQuickPostPrice();
+                      const oldPrice = price * 1.2;
+                      const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
                       navigator.clipboard.writeText(text);
                     }}
                     className="mt-3 w-full text-sm bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
