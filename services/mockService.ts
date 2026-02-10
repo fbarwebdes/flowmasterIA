@@ -364,11 +364,26 @@ export const extractFromImage = async (file: File): Promise<{ title: string; pri
 
 export const extractFromLink = async (link: string): Promise<{ title: string; price: number; image: string; platform: Product['platform'] }> => {
   try {
-    const { data, error } = await supabase.functions.invoke('fetch-metadata', {
-      body: { url: link }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
+
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ url: link }),
     });
 
-    if (error) throw error;
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('fetch-metadata HTTP Error:', response.status, text);
+      throw new Error(`Edge Function retornou erro ${response.status}`);
+    }
+
+    const data = await response.json();
 
     return {
       title: data.title || 'Produto sem título',

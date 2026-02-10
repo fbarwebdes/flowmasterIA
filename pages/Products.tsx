@@ -672,6 +672,42 @@ export const Products: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* WhatsApp Template Preview */}
+              {quickPostData && (
+                <div className="bg-[#e5ddd5] rounded-xl p-4 border border-slate-200">
+                  <h4 className="font-semibold text-slate-700 flex items-center text-sm mb-3">
+                    <svg viewBox="0 0 24 24" className="mr-2 text-green-500 w-5 h-5 flex-shrink-0" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
+                    </svg>
+                    Pré-visualização WhatsApp
+                  </h4>
+                  <div className="bg-white rounded-lg shadow-sm p-3 max-w-xs ml-auto">
+                    {quickPostData.image && (
+                      <img src={quickPostData.image} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
+                    )}
+                    <p className="text-sm font-medium text-slate-900 mb-1">
+                      🔥 *{quickPostData.title}*
+                    </p>
+                    <p className="text-sm text-emerald-600 font-bold mb-1">
+                      💰 R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                    </p>
+                    <p className="text-xs text-blue-600 break-all mb-1">
+                      🔗 {quickPostLink.length > 50 ? quickPostLink.substring(0, 50) + '...' : quickPostLink}
+                    </p>
+                    <p className="text-[10px] text-slate-400 text-right mt-1">agora</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const text = `🔥 *${quickPostData.title}*\n\n💰 R$ ${getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}\n\n🔗 ${quickPostLink}\n\n✅ Compre agora!`;
+                      navigator.clipboard.writeText(text);
+                    }}
+                    className="mt-3 w-full text-sm bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Copy size={14} /> Copiar Mensagem
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Save Footer */}
