@@ -13,6 +13,8 @@ export const Integrations: React.FC = () => {
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [whatsappChats, setWhatsappChats] = useState<Array<{ id: string; name: string; isGroup: boolean }>>([]);
     const [loadingChats, setLoadingChats] = useState(false);
+    const [manualPhone, setManualPhone] = useState('');
+    const [chatSearchFilter, setChatSearchFilter] = useState('');
 
     useEffect(() => {
         fetchSettings().then(data => {
@@ -367,7 +369,7 @@ export const Integrations: React.FC = () => {
                                                 const selected = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3].filter(Boolean);
                                                 if (selected.length === 0) return (
                                                     <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                                                        ⚠️ Nenhum destino selecionado. Clique em "Buscar Grupos e Contatos" e selecione até 3.
+                                                        ⚠️ Nenhum destino selecionado. Adicione um número ou busque grupos/contatos abaixo.
                                                     </p>
                                                 );
                                                 return (
@@ -400,52 +402,105 @@ export const Integrations: React.FC = () => {
                                                 );
                                             })()}
 
-                                            {/* Group/Contact picker list */}
-                                            {whatsappChats.length > 0 && (
-                                                <div className="border border-[var(--color-border)] rounded-lg max-h-60 overflow-y-auto">
-                                                    {whatsappChats.map((chat) => {
-                                                        const creds = getConfig(activeTab).credentials;
-                                                        const selectedChats = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3];
-                                                        const isSelected = selectedChats.includes(chat.id);
-                                                        const selectedCount = selectedChats.filter(Boolean).length;
-
-                                                        return (
+                                            {/* Manual phone number input */}
+                                            {(() => {
+                                                const creds = getConfig(activeTab).credentials;
+                                                const selectedCount = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3].filter(Boolean).length;
+                                                return (
+                                                    <div className="mb-3">
+                                                        <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Adicionar número manualmente</label>
+                                                        <div className="flex gap-2">
+                                                            <div className="relative flex-1">
+                                                                <Phone size={14} className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" />
+                                                                <input
+                                                                    type="tel"
+                                                                    value={manualPhone}
+                                                                    onChange={(e) => setManualPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                                                                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                                                                    placeholder="5522999787535"
+                                                                    disabled={selectedCount >= 3}
+                                                                />
+                                                            </div>
                                                             <button
-                                                                key={chat.id}
                                                                 type="button"
-                                                                disabled={!isSelected && selectedCount >= 3}
+                                                                disabled={!manualPhone || manualPhone.length < 10 || selectedCount >= 3}
                                                                 onClick={() => {
-                                                                    if (isSelected) {
-                                                                        // Deselect
-                                                                        if (creds.destinationChat === chat.id) updateIntegration(activeTab, 'destinationChat', '');
-                                                                        else if (creds.destinationChat2 === chat.id) updateIntegration(activeTab, 'destinationChat2', '');
-                                                                        else if (creds.destinationChat3 === chat.id) updateIntegration(activeTab, 'destinationChat3', '');
-                                                                    } else {
-                                                                        // Select in next empty slot
-                                                                        if (!creds.destinationChat) updateIntegration(activeTab, 'destinationChat', chat.id);
-                                                                        else if (!creds.destinationChat2) updateIntegration(activeTab, 'destinationChat2', chat.id);
-                                                                        else if (!creds.destinationChat3) updateIntegration(activeTab, 'destinationChat3', chat.id);
-                                                                    }
+                                                                    const chatId = `${manualPhone}@c.us`;
+                                                                    const creds2 = getConfig(activeTab).credentials;
+                                                                    if (!creds2.destinationChat) updateIntegration(activeTab, 'destinationChat', chatId);
+                                                                    else if (!creds2.destinationChat2) updateIntegration(activeTab, 'destinationChat2', chatId);
+                                                                    else if (!creds2.destinationChat3) updateIntegration(activeTab, 'destinationChat3', chatId);
+                                                                    setManualPhone('');
                                                                 }}
-                                                                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm border-b border-[var(--color-border)] last:border-b-0 transition-colors ${isSelected
-                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200'
-                                                                    : selectedCount >= 3
-                                                                        ? 'opacity-40 cursor-not-allowed bg-[var(--color-bg-main)]'
-                                                                        : 'hover:bg-[var(--color-bg-main)] text-[var(--color-text-main)]'
-                                                                    }`}
+                                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                                                             >
-                                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'
-                                                                    }`}>
-                                                                    {isSelected && <CheckCircle2 size={12} />}
-                                                                </div>
-                                                                {chat.isGroup ? <Users size={16} className="text-emerald-500 flex-shrink-0" /> : <Phone size={16} className="text-blue-500 flex-shrink-0" />}
-                                                                <span className="truncate">{chat.name}</span>
-                                                                <span className="text-[10px] text-[var(--color-text-muted)] ml-auto flex-shrink-0">{chat.isGroup ? 'Grupo' : 'Contato'}</span>
+                                                                <Phone size={14} />
+                                                                Adicionar
                                                             </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
+                                                        </div>
+                                                        {selectedCount >= 3 && (
+                                                            <p className="text-[10px] text-amber-500 mt-1">Limite de 3 destinos atingido. Remova um para adicionar outro.</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Search filter + Group/Contact picker list */}
+                                            {whatsappChats.length > 0 && (
+                                                <>
+                                                    <div className="mb-2">
+                                                        <input
+                                                            type="text"
+                                                            value={chatSearchFilter}
+                                                            onChange={(e) => setChatSearchFilter(e.target.value)}
+                                                            className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                                                            placeholder="🔍 Filtrar grupos e contatos..."
+                                                        />
+                                                    </div>
+                                                    <div className="border border-[var(--color-border)] rounded-lg max-h-60 overflow-y-auto">
+                                                        {whatsappChats.filter(chat => !chatSearchFilter || chat.name.toLowerCase().includes(chatSearchFilter.toLowerCase())).map((chat) => {
+                                                            const creds = getConfig(activeTab).credentials;
+                                                            const selectedChats = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3];
+                                                            const isSelected = selectedChats.includes(chat.id);
+                                                            const selectedCount = selectedChats.filter(Boolean).length;
+
+                                                            return (
+                                                                <button
+                                                                    key={chat.id}
+                                                                    type="button"
+                                                                    disabled={!isSelected && selectedCount >= 3}
+                                                                    onClick={() => {
+                                                                        if (isSelected) {
+                                                                            // Deselect
+                                                                            if (creds.destinationChat === chat.id) updateIntegration(activeTab, 'destinationChat', '');
+                                                                            else if (creds.destinationChat2 === chat.id) updateIntegration(activeTab, 'destinationChat2', '');
+                                                                            else if (creds.destinationChat3 === chat.id) updateIntegration(activeTab, 'destinationChat3', '');
+                                                                        } else {
+                                                                            // Select in next empty slot
+                                                                            if (!creds.destinationChat) updateIntegration(activeTab, 'destinationChat', chat.id);
+                                                                            else if (!creds.destinationChat2) updateIntegration(activeTab, 'destinationChat2', chat.id);
+                                                                            else if (!creds.destinationChat3) updateIntegration(activeTab, 'destinationChat3', chat.id);
+                                                                        }
+                                                                    }}
+                                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm border-b border-[var(--color-border)] last:border-b-0 transition-colors ${isSelected
+                                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200'
+                                                                        : selectedCount >= 3
+                                                                            ? 'opacity-40 cursor-not-allowed bg-[var(--color-bg-main)]'
+                                                                            : 'hover:bg-[var(--color-bg-main)] text-[var(--color-text-main)]'
+                                                                        }`}
+                                                                >
+                                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'
+                                                                        }`}>
+                                                                        {isSelected && <CheckCircle2 size={12} />}
+                                                                    </div>
+                                                                    {chat.isGroup ? <Users size={16} className="text-emerald-500 flex-shrink-0" /> : <Phone size={16} className="text-blue-500 flex-shrink-0" />}
+                                                                    <span className="truncate">{chat.name}</span>
+                                                                    <span className="text-[10px] text-[var(--color-text-muted)] ml-auto flex-shrink-0">{chat.isGroup ? 'Grupo' : 'Contato'}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>)}
                                         </div>
                                     </>
                                 )}
