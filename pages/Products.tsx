@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Product, AppSettings } from '../types';
 import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule, extractFromLink, saveProduct } from '../services/mockService';
-import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3 } from 'lucide-react';
+import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3, Send } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -334,43 +334,59 @@ export const Products: React.FC = () => {
   const formatCurrency = (value: number) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  // WhatsApp Share Function
+  const handleWhatsAppShare = (product: Product) => {
+    const price = product.price;
+    const oldPrice = price * 1.2;
+    let text = '';
+    if (product.salesCopy) {
+      text = product.salesCopy;
+    } else if (settings) {
+      text = generateFromTemplate(product);
+    } else {
+      text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${product.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${product.affiliate_link}`;
+    }
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+  };
+
   return (
-    <div className="space-y-6 relative">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Produtos</h1>
-          <p className="text-slate-500 mt-1">Gerencie seus links e itens de afiliado.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Produtos</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base">Gerencie seus links e itens de afiliado.</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex space-x-2 sm:space-x-3">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium"
+            className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium text-sm"
           >
-            <RefreshCw size={20} />
-            <span>Importar Vendas</span>
+            <RefreshCw size={18} />
+            <span className="hidden sm:inline">Importar Vendas</span>
           </button>
           <button
             onClick={() => { resetQuickPost(); setIsQuickPostOpen(true); }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium text-sm"
           >
-            <Rocket size={20} />
-            <span>Quick Post</span>
+            <Rocket size={18} />
+            <span className="hidden sm:inline">Quick Post</span>
           </button>
         </div>
       </div>
 
       {/* Platform Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-1">
+      <div className="flex space-x-2 overflow-x-auto pb-1 -mx-1 px-1">
         {[
           { id: 'all', label: 'Todos', count: products.length },
           { id: 'Shopee', label: 'Shopee', count: products.filter(p => p.platform === 'Shopee').length },
           { id: 'Amazon', label: 'Amazon', count: products.filter(p => p.platform === 'Amazon').length },
-          { id: 'Mercado Livre', label: 'Mercado Livre', count: products.filter(p => p.platform === 'Mercado Livre').length }
+          { id: 'Mercado Livre', label: 'ML', count: products.filter(p => p.platform === 'Mercado Livre').length }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setPlatformFilter(tab.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-2 ${platformFilter === tab.id
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0 ${platformFilter === tab.id
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
@@ -387,31 +403,27 @@ export const Products: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex space-x-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex-1 relative">
+      <div className="flex flex-wrap gap-2 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex-1 min-w-[150px] relative">
           <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar produtos..."
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        <button className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center space-x-2">
-          <Filter size={18} />
-          <span className="hidden sm:inline">Filtrar</span>
-        </button>
 
         {/* Delete Selected Button */}
         {selectedProducts.size > 0 && (
           <button
             onClick={handleDeleteSelected}
             disabled={isDeleting}
-            className="px-4 py-2 border border-red-200 bg-red-50 rounded-lg text-red-600 hover:bg-red-100 flex items-center space-x-2 disabled:opacity-50 transition-colors"
+            className="px-3 py-2 border border-red-200 bg-red-50 rounded-lg text-red-600 hover:bg-red-100 flex items-center space-x-1.5 disabled:opacity-50 transition-colors text-sm"
           >
-            {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-            <span className="hidden sm:inline">Excluir ({selectedProducts.size})</span>
+            {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            <span>({selectedProducts.size})</span>
           </button>
         )}
 
@@ -420,21 +432,22 @@ export const Products: React.FC = () => {
           <button
             onClick={handleDeleteAllProducts}
             disabled={isDeleting}
-            className="px-4 py-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 flex items-center space-x-2 disabled:opacity-50"
+            className="px-3 py-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 flex items-center space-x-1.5 disabled:opacity-50 text-sm"
           >
-            {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash size={18} />}
+            {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash size={16} />}
             <span className="hidden sm:inline">Excluir Todos ({filteredProducts.length})</span>
+            <span className="sm:hidden">({filteredProducts.length})</span>
           </button>
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 font-medium text-slate-500 w-10">
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 w-10">
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
@@ -442,10 +455,10 @@ export const Products: React.FC = () => {
                     onChange={toggleAllSelection}
                   />
                 </th>
-                <th className="px-6 py-4 font-medium text-slate-500">Produto</th>
-                <th className="px-6 py-4 font-medium text-slate-500">Plataforma</th>
-                <th className="px-6 py-4 font-medium text-slate-500">Status</th>
-                <th className="px-6 py-4 font-medium text-slate-500 text-right">Ações</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Produto</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Plataforma</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Status</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -464,7 +477,7 @@ export const Products: React.FC = () => {
               ) : (
                 filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-4 lg:px-6 py-4">
                       <input
                         type="checkbox"
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
@@ -472,14 +485,14 @@ export const Products: React.FC = () => {
                         onChange={() => toggleProductSelection(product.id)}
                       />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-4">
+                    <td className="px-4 lg:px-6 py-4">
+                      <div className="flex items-center space-x-3">
                         <img
                           src={product.image}
                           alt=""
-                          className="h-10 w-10 rounded-lg object-cover bg-slate-100 border border-slate-200"
+                          className="h-10 w-10 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
                         />
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium text-slate-900 line-clamp-1">{product.title}</p>
                           <a
                             href={product.affiliate_link}
@@ -492,12 +505,12 @@ export const Products: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 lg:px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                         {product.platform}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 lg:px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.active
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
@@ -505,8 +518,16 @@ export const Products: React.FC = () => {
                         {product.active ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 lg:px-6 py-4 text-right">
                       <div className="flex justify-end space-x-1">
+                        {/* WhatsApp Share */}
+                        <button
+                          onClick={() => handleWhatsAppShare(product)}
+                          className="p-2 rounded-lg transition-colors bg-green-50 text-green-600 hover:bg-green-100"
+                          title="Enviar via WhatsApp"
+                        >
+                          <Send size={18} />
+                        </button>
                         {product.salesCopy && (
                           <button
                             onClick={() => openPreview(product)}
@@ -538,6 +559,108 @@ export const Products: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {/* Select All mobile */}
+        <div className="flex items-center justify-between px-1">
+          <label className="flex items-center space-x-2 text-sm text-slate-500">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+              checked={filteredProducts.length > 0 && selectedProducts.size === filteredProducts.length}
+              onChange={toggleAllSelection}
+            />
+            <span>Selecionar Todos</span>
+          </label>
+          <span className="text-xs text-slate-400">{filteredProducts.length} produtos</span>
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+            Carregando produtos...
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+            Nenhum produto encontrado. Adicione um para começar.
+          </div>
+        ) : (
+          filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 space-y-3">
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 mt-1 flex-shrink-0"
+                  checked={selectedProducts.has(product.id)}
+                  onChange={() => toggleProductSelection(product.id)}
+                />
+                <img
+                  src={product.image}
+                  alt=""
+                  className="h-14 w-14 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 text-sm line-clamp-2">{product.title}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                      {product.platform}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${product.active
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                      }`}>
+                      {product.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                <a
+                  href={product.affiliate_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-600 hover:underline flex items-center"
+                >
+                  Ver Link <ExternalLink size={10} className="ml-1" />
+                </a>
+                <div className="flex space-x-1">
+                  {/* WhatsApp Share */}
+                  <button
+                    onClick={() => handleWhatsAppShare(product)}
+                    className="p-2 rounded-lg transition-colors bg-green-50 text-green-600 hover:bg-green-100"
+                    title="Enviar via WhatsApp"
+                  >
+                    <Send size={16} />
+                  </button>
+                  {product.salesCopy && (
+                    <button
+                      onClick={() => openPreview(product)}
+                      className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                      title="Ver Template"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => openScheduleModal(product)}
+                    className="p-2 rounded-lg transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
+                    title="Agendar"
+                  >
+                    <Calendar size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(product)}
+                    className="text-slate-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg"
+                    title="Excluir"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Import Modal (Shopee Auto) */}
@@ -706,17 +829,31 @@ export const Products: React.FC = () => {
                     </p>
                     <p className="text-[10px] text-slate-400 text-right mt-1">agora</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      const price = getQuickPostPrice();
-                      const oldPrice = price * 1.2;
-                      const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
-                      navigator.clipboard.writeText(text);
-                    }}
-                    className="mt-3 w-full text-sm bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
-                  >
-                    <Copy size={14} /> Copiar Mensagem
-                  </button>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => {
+                        const price = getQuickPostPrice();
+                        const oldPrice = price * 1.2;
+                        const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
+                        navigator.clipboard.writeText(text);
+                      }}
+                      className="flex-1 text-sm bg-slate-600 text-white py-2.5 rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                      <Copy size={14} /> Copiar
+                    </button>
+                    <button
+                      onClick={() => {
+                        const price = getQuickPostPrice();
+                        const oldPrice = price * 1.2;
+                        const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
+                        const encodedText = encodeURIComponent(text);
+                        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+                      }}
+                      className="flex-1 text-sm bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                      <Send size={14} /> WhatsApp
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

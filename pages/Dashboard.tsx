@@ -19,11 +19,11 @@ const colorMap = {
 };
 
 const StatCard = ({ title, value, subtext, icon: Icon, color }: StatCardProps) => (
-  <div className="bg-[var(--color-bg-card)] p-6 rounded-xl border border-[var(--color-border)] shadow-sm hover:shadow-lg transition-all duration-300 group">
+  <div className="bg-[var(--color-bg-card)] p-4 sm:p-6 rounded-xl border border-[var(--color-border)] shadow-sm hover:shadow-lg transition-all duration-300 group">
     <div className="flex items-start justify-between">
       <div>
         <p className="text-sm font-medium text-[var(--color-text-muted)]">{title}</p>
-        <h3 className="text-3xl font-bold text-[var(--color-text-main)] mt-2 group-hover:scale-105 transition-transform origin-left">{value}</h3>
+        <h3 className="text-xl sm:text-3xl font-bold text-[var(--color-text-main)] mt-1 sm:mt-2 group-hover:scale-105 transition-transform origin-left">{value}</h3>
       </div>
       <div className={`p-3 rounded-xl ${colorMap[color]}`}>
         <Icon size={24} />
@@ -80,12 +80,12 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Dashboard</h1>
-        <p className="text-[var(--color-text-muted)] mt-1">Visão geral do FlowMasterIA</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Dashboard</h1>
+        <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Visão geral do FlowMasterIA</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatCard
           title="Total de Produtos"
           value={stats?.totalProducts || 0}
@@ -117,7 +117,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent Products */}
         <div className="bg-[var(--color-bg-card)] rounded-xl border border-[var(--color-border)] shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
@@ -136,7 +136,7 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               recentProducts.map(product => (
-                <div key={product.id} className="px-6 py-4 flex items-center gap-4 hover:bg-[var(--color-bg-main)] transition-colors">
+                <div key={product.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-[var(--color-bg-main)] transition-colors">
                   <img
                     src={product.image || 'https://via.placeholder.com/50'}
                     alt={product.title}
@@ -175,7 +175,7 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               pendingSchedules.map(schedule => (
-                <div key={schedule.id} className="px-6 py-4 flex items-center gap-4 hover:bg-[var(--color-bg-main)] transition-colors">
+                <div key={schedule.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-[var(--color-bg-main)] transition-colors">
                   <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                     <Send className="text-purple-600 dark:text-purple-400" size={18} />
                   </div>

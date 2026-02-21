@@ -33,14 +33,14 @@ export const SalesTemplates: React.FC = () => {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Templates de Venda</h1>
-                <p className="text-[var(--color-text-muted)] mt-1">Configure o modelo de mensagem para o WhatsApp.</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Templates de Venda</h1>
+                <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Configure o modelo de mensagem para o WhatsApp.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4 sm:p-6 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <h3 className="font-semibold text-[var(--color-text-main)] flex items-center">
                                 <MessageSquare className="mr-2 text-emerald-500" size={20} />
                                 Editor de Mensagem
@@ -76,7 +76,7 @@ export const SalesTemplates: React.FC = () => {
                         <textarea
                             value={template}
                             onChange={(e) => setTemplate(e.target.value)}
-                            className="w-full h-96 p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-mono text-sm leading-relaxed"
+                            className="w-full h-64 sm:h-96 p-3 sm:p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-mono text-sm leading-relaxed"
                             placeholder="Digite sua mensagem aqui..."
                         />
                     </div>

@@ -140,13 +140,13 @@ export const Integrations: React.FC = () => {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Integrações</h1>
-                <p className="text-[var(--color-text-muted)] mt-1">Configure suas chaves de API para importação e disparos.</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Integrações</h1>
+                <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Configure suas chaves de API para importação e disparos.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* Sidebar */}
-                <div className="lg:col-span-1 space-y-2">
+                <div className="lg:col-span-1 flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 overflow-x-auto pb-1 lg:pb-0">
                     {platforms.map(p => {
                         const config = getConfig(p.id as IntegrationId);
                         return (

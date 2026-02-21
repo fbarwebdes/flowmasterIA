@@ -25,13 +25,14 @@ export const Links: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Links Afiliados</h1>
-        <p className="text-slate-500 mt-1">Gerencie e monitore o desempenho dos seus links.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Links Afiliados</h1>
+        <p className="text-slate-500 mt-1 text-sm sm:text-base">Gerencie e monitore o desempenho dos seus links.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -46,7 +47,7 @@ export const Links: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                 <tr><td colSpan={6} className="text-center py-10 text-slate-500">Carregando dados...</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-slate-500">Carregando dados...</td></tr>
               ) : products.map((product) => (
                 <tr key={product.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 max-w-xs">
@@ -63,8 +64,8 @@ export const Links: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-700">
                     <div className="flex items-center">
-                        <MousePointer2 size={14} className="mr-1 text-slate-400" />
-                        {product.clicks || 0}
+                      <MousePointer2 size={14} className="mr-1 text-slate-400" />
+                      {product.clicks || 0}
                     </div>
                   </td>
                   <td className="px-6 py-4 font-medium text-green-600">
@@ -72,15 +73,15 @@ export const Links: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                        <TrendingUp size={14} className="mr-1 text-slate-400" />
-                        {calculateCTR(product.clicks, product.sales)}
+                      <TrendingUp size={14} className="mr-1 text-slate-400" />
+                      {calculateCTR(product.clicks, product.sales)}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                        onClick={() => copyToClipboard(product.affiliate_link)}
-                        className="text-slate-400 hover:text-indigo-600 p-1 rounded hover:bg-indigo-50 transition-colors"
-                        title="Copiar Link"
+                    <button
+                      onClick={() => copyToClipboard(product.affiliate_link)}
+                      className="text-slate-400 hover:text-indigo-600 p-1 rounded hover:bg-indigo-50 transition-colors"
+                      title="Copiar Link"
                     >
                       <Copy size={18} />
                     </button>
@@ -90,6 +91,34 @@ export const Links: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">Carregando dados...</div>
+        ) : products.map((product) => (
+          <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <img src={product.image} className="w-10 h-10 rounded-lg bg-slate-100 object-cover flex-shrink-0" />
+              <p className="font-medium text-slate-900 text-sm line-clamp-2 flex-1">{product.title}</p>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center"><MousePointer2 size={12} className="mr-1" />{product.clicks || 0} cliques</span>
+                <span className="text-green-600 font-medium">{product.sales || 0} vendas</span>
+                <span>{calculateCTR(product.clicks, product.sales)}</span>
+              </div>
+              <button
+                onClick={() => copyToClipboard(product.affiliate_link)}
+                className="text-slate-400 hover:text-indigo-600 p-1.5 rounded hover:bg-indigo-50 transition-colors"
+                title="Copiar Link"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

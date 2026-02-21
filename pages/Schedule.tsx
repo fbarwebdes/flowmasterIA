@@ -198,27 +198,28 @@ export const Schedule: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Agendamentos</h1>
-          <p className="text-[var(--color-text-muted)] mt-1">Automatize seus disparos no WhatsApp.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Agendamentos</h1>
+          <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Automatize seus disparos no WhatsApp.</p>
         </div>
         <div className="flex space-x-2">
           {selectedIds.length > 0 && (
             <button
               onClick={handleBulkDelete}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg shadow-sm flex items-center space-x-2 transition-colors"
+              className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center space-x-2 transition-colors text-sm"
             >
-              <Trash2 size={20} />
+              <Trash2 size={18} />
               <span>Excluir ({selectedIds.length})</span>
             </button>
           )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-sm flex items-center space-x-2 transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center space-x-2 transition-colors text-sm"
           >
-            <Plus size={20} />
-            <span>Novo Agendamento</span>
+            <Plus size={18} />
+            <span className="hidden sm:inline">Novo Agendamento</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
       </div>
@@ -243,8 +244,8 @@ export const Schedule: React.FC = () => {
               <span className="text-sm font-medium text-[var(--color-text-muted)]">Selecionar Todos</span>
             </div>
             {schedules.map((schedule) => (
-              <li key={schedule.id} className="p-4 hover:bg-[var(--color-bg-main)] transition-colors flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+              <li key={schedule.id} className="p-3 sm:p-4 hover:bg-[var(--color-bg-main)] transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(schedule.id)}

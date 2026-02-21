@@ -74,6 +74,26 @@ body {
 /* Root element */
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  body {
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  /* Prevent horizontal scrolling */
+  #root {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
 }
 
 /* Line clamp utility for multi-line text truncation */

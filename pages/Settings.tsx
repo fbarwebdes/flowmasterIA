@@ -38,12 +38,12 @@ export const Settings: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900">Configurações</h1>
-                <p className="text-slate-500 mt-1">Gerencie seu perfil e templates de envio.</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Configurações</h1>
+                <p className="text-slate-500 mt-1 text-sm sm:text-base">Gerencie seu perfil e templates de envio.</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="flex border-b border-slate-200">
+                <div className="flex border-b border-slate-200 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('general')}
                         className={`px-6 py-4 text-sm font-medium flex items-center space-x-2 ${activeTab === 'general' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}

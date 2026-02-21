@@ -6,7 +6,7 @@ import {
   Link as LinkIcon,
   Settings,
   LogOut,
-  Menu, // Mobile menu icon
+  Menu,
   X,
   Puzzle,
   MessageSquare,
@@ -66,6 +66,17 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+// Map view names to readable Portuguese titles
+const viewTitles: Record<ViewState, string> = {
+  dashboard: 'Dashboard',
+  products: 'Meus Produtos',
+  schedule: 'Agendamentos',
+  links: 'Links Afiliados',
+  integrations: 'Integrações',
+  settings: 'Configurações',
+  templates: 'Templates de Venda',
+};
+
 export const Layout: React.FC<LayoutProps> = ({
   children,
   currentView,
@@ -98,8 +109,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[var(--color-bg-card)] border-r border-[var(--color-border)] transform transition-all duration-300 ease-in-out
-          ${isMobileMenuOpen ? 'translate-x-0 w-64' : 'lg:translate-x-0'}
+        className={`fixed top-0 left-0 z-50 h-screen bg-[var(--color-bg-card)] border-r border-[var(--color-border)] transform transition-all duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'}
           ${isSidebarHovered ? 'lg:w-64 shadow-2xl' : 'lg:w-20'}
         `}
         onMouseEnter={() => setIsSidebarHovered(true)}
@@ -201,32 +212,41 @@ export const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-20">
         {/* Topbar */}
-        <header className="bg-[var(--color-bg-card)] border-b border-[var(--color-border)] sticky top-0 z-30 h-16">
-          <div className="flex items-center justify-between px-4 h-full">
+        <header className="bg-[var(--color-bg-card)] border-b border-[var(--color-border)] sticky top-0 z-30 h-14 lg:h-16">
+          <div className="flex items-center justify-between px-3 lg:px-4 h-full">
             <div className="flex items-center">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 -ml-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                className="lg:hidden p-2 -ml-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
               >
                 <Menu size={24} />
               </button>
-              <h2 className="ml-4 text-lg font-semibold text-[var(--color-text-main)] hidden sm:block capitalize">
-                {currentView}
+              {/* Mobile logo */}
+              <div className="lg:hidden flex items-center ml-2">
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex-shrink-0 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                  <Zap className="text-white w-4 h-4 fill-current" />
+                </div>
+                <span className="ml-2 text-base font-bold text-[var(--color-text-main)]">
+                  FlowMaster<span className="text-emerald-500">IA</span>
+                </span>
+              </div>
+              <h2 className="ml-4 text-lg font-semibold text-[var(--color-text-main)] hidden lg:block">
+                {viewTitles[currentView] || currentView}
               </h2>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="flex flex-col items-end hidden sm:flex">
+            <div className="flex items-center space-x-2 lg:space-x-4">
+              <div className="flex-col items-end hidden sm:flex">
                 <span className="text-sm font-medium text-[var(--color-text-main)]">{user.name}</span>
                 <span className="text-xs text-[var(--color-text-muted)]">{user.email}</span>
               </div>
-              <div className="h-9 w-9 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden flex items-center justify-center">
+              <div className="h-8 w-8 lg:h-9 lg:w-9 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
                 {user.avatar.includes('http') ? (
                   <img src={user.avatar} alt="User" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-emerald-700 font-bold">{user.name.charAt(0)}</span>
+                  <span className="text-emerald-700 font-bold text-sm">{user.name.charAt(0)}</span>
                 )}
               </div>
             </div>
@@ -234,7 +254,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8">
           <div className="max-w-7xl mx-auto animate-fade-in">
             {children}
           </div>
