@@ -161,6 +161,7 @@ export const Integrations: React.FC = () => {
                             directTest: {
                                 instanceId,
                                 token,
+                                baseUrl: config.credentials.baseUrl,
                                 chatId,
                                 message: '✅ Conexão Green API testada com sucesso via FlowMasterIA!'
                             }
@@ -173,10 +174,10 @@ export const Integrations: React.FC = () => {
                     if (response.ok && data.success) {
                         setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso para ${chatId.split('@')[0]}!` });
                     } else {
-                        const errorMsg = data.error || data.data?.message || 'Falha no envio';
+                        const errorMsg = data.error || data.data?.message || `API Error ${response.status}`;
                         setTestResult({
                             success: false,
-                            message: `Erro da API: ${errorMsg}. Verifique se o WhatsApp está conectado no painel Green API.`
+                            message: `Erro da API: ${errorMsg}. Verifique no painel Green API se a cota foi atingida.`
                         });
                     }
                 } catch (fetchErr: any) {
@@ -325,11 +326,26 @@ export const Integrations: React.FC = () => {
                                                     placeholder="Ex: 7103524545"
                                                 />
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Número gerado ao criar a instância no painel Green API</p>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">idInstance do seu painel Green API</p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Token da API (apiTokenInstance)</label>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">API URL (Opcional)</label>
+                                            <div className="relative">
+                                                <RefreshCw className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
+                                                <input
+                                                    type="text"
+                                                    value={getConfig(activeTab).credentials.baseUrl || ''}
+                                                    onChange={(e) => updateIntegration(activeTab, 'baseUrl', e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                                                    placeholder="https://7103.api.greenapi.com"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Copia o 'apiUrl' do seu painel se for diferente do padrão</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Token (apiTokenInstance)</label>
                                             <div className="relative">
                                                 <Shield className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
                                                 <input
@@ -337,10 +353,10 @@ export const Integrations: React.FC = () => {
                                                     value={getConfig(activeTab).credentials.token || ''}
                                                     onChange={(e) => updateIntegration(activeTab, 'token', e.target.value)}
                                                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                                                    placeholder="af0f62aae99d480d..."
+                                                    placeholder="Seu Token da Green API"
                                                 />
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Chave secreta da instância Green API</p>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">apiTokenInstance do seu painel Green API</p>
                                         </div>
 
                                         <div>
