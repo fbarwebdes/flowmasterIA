@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Save, Key, AlertCircle, CheckCircle2, Shield, Loader2 } from 'lucide-react';
+import { ShoppingBag, Save, Key, AlertCircle, CheckCircle2, Shield, Loader2, Users, RefreshCw, Phone } from 'lucide-react';
 import { fetchSettings, saveSettings } from '../services/mockService';
 import { validateShopeeCredentials } from '../services/shopeeService';
 import { AppSettings, IntegrationConfig, IntegrationId } from '../types';
@@ -11,6 +11,8 @@ export const Integrations: React.FC = () => {
     const [activeTab, setActiveTab] = useState<IntegrationId>('shopee');
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [whatsappChats, setWhatsappChats] = useState<Array<{ id: string; name: string; isGroup: boolean }>>([]);
+    const [loadingChats, setLoadingChats] = useState(false);
 
     useEffect(() => {
         fetchSettings().then(data => {
@@ -320,43 +322,130 @@ export const Integrations: React.FC = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Chats de Destino (até 3 — plano gratuito)</label>
-                                            <p className="text-xs text-[var(--color-text-muted)] mb-3">
-                                                Número com código do país (sem +) ou ID de grupo (<code>@g.us</code>). Ex: <strong>5511999999999</strong> ou <strong>120363...@g.us</strong>
-                                            </p>
-
-                                            <div className="space-y-2">
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">1</span>
-                                                    <input
-                                                        type="text"
-                                                        value={getConfig(activeTab).credentials.destinationChat || ''}
-                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat', e.target.value)}
-                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
-                                                        placeholder="Ex: 120363395657267329@g.us (grupo)"
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">2</span>
-                                                    <input
-                                                        type="text"
-                                                        value={getConfig(activeTab).credentials.destinationChat2 || ''}
-                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat2', e.target.value)}
-                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
-                                                        placeholder="Ex: 5511999999999 (número pessoal)"
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">3</span>
-                                                    <input
-                                                        type="text"
-                                                        value={getConfig(activeTab).credentials.destinationChat3 || ''}
-                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat3', e.target.value)}
-                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
-                                                        placeholder="Ex: 5521988887777 (outro número)"
-                                                    />
-                                                </div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block text-sm font-medium text-[var(--color-text-main)]">Destinos de Envio (até 3)</label>
+                                                <button
+                                                    type="button"
+                                                    disabled={loadingChats || !getConfig(activeTab).credentials.instanceId || !getConfig(activeTab).credentials.token}
+                                                    onClick={async () => {
+                                                        const config = getConfig(activeTab);
+                                                        const { instanceId, token } = config.credentials;
+                                                        if (!instanceId || !token) return;
+                                                        setLoadingChats(true);
+                                                        try {
+                                                            const res = await fetch(`https://api.green-api.com/waInstance${instanceId}/getContacts/${token}`);
+                                                            const contacts = await res.json();
+                                                            const chats = (contacts || []).filter((c: any) => c.name && c.name !== '').map((c: any) => ({
+                                                                id: c.id,
+                                                                name: c.name || c.id,
+                                                                isGroup: c.id.endsWith('@g.us')
+                                                            }));
+                                                            // Sort: groups first, then contacts
+                                                            chats.sort((a: any, b: any) => {
+                                                                if (a.isGroup && !b.isGroup) return -1;
+                                                                if (!a.isGroup && b.isGroup) return 1;
+                                                                return a.name.localeCompare(b.name);
+                                                            });
+                                                            setWhatsappChats(chats);
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            alert('Erro ao buscar grupos. Verifique se o ID e Token estão corretos e o WhatsApp está conectado.');
+                                                        } finally {
+                                                            setLoadingChats(false);
+                                                        }
+                                                    }}
+                                                    className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                                                >
+                                                    {loadingChats ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                                    Buscar Grupos e Contatos
+                                                </button>
                                             </div>
+
+                                            {/* Selected chats display */}
+                                            {(() => {
+                                                const creds = getConfig(activeTab).credentials;
+                                                const selected = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3].filter(Boolean);
+                                                if (selected.length === 0) return (
+                                                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+                                                        ⚠️ Nenhum destino selecionado. Clique em "Buscar Grupos e Contatos" e selecione até 3.
+                                                    </p>
+                                                );
+                                                return (
+                                                    <div className="space-y-1.5 mb-3">
+                                                        {selected.map((chatId, i) => {
+                                                            const found = whatsappChats.find(c => c.id === chatId);
+                                                            const name = found?.name || chatId;
+                                                            const isGroup = chatId!.endsWith('@g.us');
+                                                            return (
+                                                                <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                                                                    <div className="flex items-center gap-2 text-sm">
+                                                                        <span className="text-xs font-bold text-emerald-600 bg-emerald-200 dark:bg-emerald-800 w-5 h-5 rounded-full flex items-center justify-center">{i + 1}</span>
+                                                                        {isGroup ? <Users size={14} className="text-emerald-600" /> : <Phone size={14} className="text-blue-600" />}
+                                                                        <span className="text-[var(--color-text-main)] font-medium truncate max-w-[200px]">{name}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const keys = ['destinationChat', 'destinationChat2', 'destinationChat3'] as const;
+                                                                            updateIntegration(activeTab, keys[i], '');
+                                                                        }}
+                                                                        className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                                                                    >
+                                                                        Remover
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Group/Contact picker list */}
+                                            {whatsappChats.length > 0 && (
+                                                <div className="border border-[var(--color-border)] rounded-lg max-h-60 overflow-y-auto">
+                                                    {whatsappChats.map((chat) => {
+                                                        const creds = getConfig(activeTab).credentials;
+                                                        const selectedChats = [creds.destinationChat, creds.destinationChat2, creds.destinationChat3];
+                                                        const isSelected = selectedChats.includes(chat.id);
+                                                        const selectedCount = selectedChats.filter(Boolean).length;
+
+                                                        return (
+                                                            <button
+                                                                key={chat.id}
+                                                                type="button"
+                                                                disabled={!isSelected && selectedCount >= 3}
+                                                                onClick={() => {
+                                                                    if (isSelected) {
+                                                                        // Deselect
+                                                                        if (creds.destinationChat === chat.id) updateIntegration(activeTab, 'destinationChat', '');
+                                                                        else if (creds.destinationChat2 === chat.id) updateIntegration(activeTab, 'destinationChat2', '');
+                                                                        else if (creds.destinationChat3 === chat.id) updateIntegration(activeTab, 'destinationChat3', '');
+                                                                    } else {
+                                                                        // Select in next empty slot
+                                                                        if (!creds.destinationChat) updateIntegration(activeTab, 'destinationChat', chat.id);
+                                                                        else if (!creds.destinationChat2) updateIntegration(activeTab, 'destinationChat2', chat.id);
+                                                                        else if (!creds.destinationChat3) updateIntegration(activeTab, 'destinationChat3', chat.id);
+                                                                    }
+                                                                }}
+                                                                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm border-b border-[var(--color-border)] last:border-b-0 transition-colors ${isSelected
+                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200'
+                                                                    : selectedCount >= 3
+                                                                        ? 'opacity-40 cursor-not-allowed bg-[var(--color-bg-main)]'
+                                                                        : 'hover:bg-[var(--color-bg-main)] text-[var(--color-text-main)]'
+                                                                    }`}
+                                                            >
+                                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'
+                                                                    }`}>
+                                                                    {isSelected && <CheckCircle2 size={12} />}
+                                                                </div>
+                                                                {chat.isGroup ? <Users size={16} className="text-emerald-500 flex-shrink-0" /> : <Phone size={16} className="text-blue-500 flex-shrink-0" />}
+                                                                <span className="truncate">{chat.name}</span>
+                                                                <span className="text-[10px] text-[var(--color-text-muted)] ml-auto flex-shrink-0">{chat.isGroup ? 'Grupo' : 'Contato'}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 )}
