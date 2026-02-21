@@ -12,7 +12,9 @@ export interface IntegrationConfig {
     baseUrl?: string;   // For WhatsApp (Green API base URL)
     token?: string;     // For WhatsApp (apiTokenInstance)
     instanceId?: string; // For Green API (idInstance)
-    destinationChat?: string; // WhatsApp chat ID (e.g. 5511999999999@c.us)
+    destinationChat?: string; // WhatsApp chat ID 1 (e.g. 5511999999999@c.us)
+    destinationChat2?: string; // WhatsApp chat ID 2
+    destinationChat3?: string; // WhatsApp chat ID 3
   };
 }
 

@@ -320,20 +320,43 @@ export const Integrations: React.FC = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Chat de Destino (número ou grupo)</label>
-                                            <div className="relative">
-                                                <UserIcon className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
-                                                <input
-                                                    type="text"
-                                                    value={getConfig(activeTab).credentials.destinationChat || ''}
-                                                    onChange={(e) => updateIntegration(activeTab, 'destinationChat', e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                                                    placeholder="5511999999999"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                                Número com código do país (sem +) ou ID do grupo. Ex: <strong>5511999999999</strong>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Chats de Destino (até 3 — plano gratuito)</label>
+                                            <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                                                Número com código do país (sem +) ou ID de grupo (<code>@g.us</code>). Ex: <strong>5511999999999</strong> ou <strong>120363...@g.us</strong>
                                             </p>
+
+                                            <div className="space-y-2">
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">1</span>
+                                                    <input
+                                                        type="text"
+                                                        value={getConfig(activeTab).credentials.destinationChat || ''}
+                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat', e.target.value)}
+                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
+                                                        placeholder="Ex: 120363395657267329@g.us (grupo)"
+                                                    />
+                                                </div>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">2</span>
+                                                    <input
+                                                        type="text"
+                                                        value={getConfig(activeTab).credentials.destinationChat2 || ''}
+                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat2', e.target.value)}
+                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
+                                                        placeholder="Ex: 5511999999999 (número pessoal)"
+                                                    />
+                                                </div>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-2.5 text-xs font-bold text-emerald-600">3</span>
+                                                    <input
+                                                        type="text"
+                                                        value={getConfig(activeTab).credentials.destinationChat3 || ''}
+                                                        onChange={(e) => updateIntegration(activeTab, 'destinationChat3', e.target.value)}
+                                                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
+                                                        placeholder="Ex: 5521988887777 (outro número)"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </>
                                 )}
