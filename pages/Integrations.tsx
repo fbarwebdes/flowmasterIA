@@ -136,44 +136,52 @@ export const Integrations: React.FC = () => {
                     return;
                 }
 
-                // Use the first available chat for the test
-                const firstChat = destinationChat || destinationChat2 || destinationChat3;
-                if (!firstChat) {
-                    setTestResult({ success: false, message: 'Adicione pelo menos um destino de envio antes de testar.' });
+                const chats = [destinationChat, destinationChat2, destinationChat3].filter(Boolean);
+                if (chats.length === 0) {
+                    setTestResult({ success: false, message: 'Adicione pelo menos um destino de envio (número ou grupo) antes de testar.' });
                     setTesting(false);
                     return;
                 }
 
-                const chatId = firstChat.includes('@') ? firstChat : `${firstChat}@c.us`;
+                // Test with the first one
+                const chatId = chats[0]!.includes('@') ? chats[0] : `${chats[0]}@c.us`;
+                console.log('Testing WhatsApp connection...', { instanceId, chatId });
 
                 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-                const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${supabaseKey}`
-                    },
-                    body: JSON.stringify({
-                        directTest: {
-                            instanceId,
-                            token,
-                            chatId,
-                            message: '✅ Conexão Green API testada com sucesso via FlowMasterIA!'
-                        }
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso para ${chatId.split('@')[0]}!` });
-                } else {
-                    setTestResult({
-                        success: false,
-                        message: data.error || data.data?.message || 'Falha no envio. Verifique credenciais e se o WhatsApp está conectado.'
+                try {
+                    const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${supabaseKey}`
+                        },
+                        body: JSON.stringify({
+                            directTest: {
+                                instanceId,
+                                token,
+                                chatId,
+                                message: '✅ Conexão Green API testada com sucesso via FlowMasterIA!'
+                            }
+                        })
                     });
+
+                    const data = await response.json();
+                    console.log('Test result:', data);
+
+                    if (response.ok && data.success) {
+                        setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso para ${chatId.split('@')[0]}!` });
+                    } else {
+                        const errorMsg = data.error || data.data?.message || 'Falha no envio';
+                        setTestResult({
+                            success: false,
+                            message: `Erro da API: ${errorMsg}. Verifique se o WhatsApp está conectado no painel Green API.`
+                        });
+                    }
+                } catch (fetchErr: any) {
+                    console.error('Fetch error during test:', fetchErr);
+                    setTestResult({ success: false, message: `Erro de rede ao testar: ${fetchErr.message}` });
                 }
             }
         } catch (error) {
