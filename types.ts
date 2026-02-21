@@ -66,3 +66,18 @@ export interface AppSettings {
 }
 
 export type ViewState = 'dashboard' | 'products' | 'schedule' | 'links' | 'integrations' | 'settings' | 'templates';
+
+export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface AutomationConfig {
+  id?: string;
+  userId?: string;
+  isActive: boolean;
+  days: DayOfWeek[];
+  startHour: string;   // "08:00"
+  endHour: string;     // "23:00"
+  intervalMinutes: number; // 20, 30, 45, 60, 90, 120, 180
+  lastShuffleIndex: number;
+  shuffledProductIds: string[];
+  lastSentAt?: string;
+}

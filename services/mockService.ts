@@ -1,4 +1,4 @@
-import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig } from '../types';
+import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig, AutomationConfig } from '../types';
 import { supabase } from './supabase';
 
 const SETTINGS_KEY = 'flowmaster_settings';
@@ -450,4 +450,55 @@ export const importProductsFromIntegration = async (integrationId: string): Prom
   // Amazon and ML are now manual-only via Quick Post.
 
   return 0;
+};
+
+// ================= AUTOMATION CONFIG =================
+
+export const fetchAutomationConfig = async (): Promise<AutomationConfig | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('automation_config')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    userId: data.user_id,
+    isActive: data.is_active,
+    days: data.days || [],
+    startHour: data.start_hour || '08:00',
+    endHour: data.end_hour || '23:00',
+    intervalMinutes: data.interval_minutes || 30,
+    lastShuffleIndex: data.last_shuffle_index || 0,
+    shuffledProductIds: data.shuffled_product_ids || [],
+    lastSentAt: data.last_sent_at,
+  };
+};
+
+export const saveAutomationConfig = async (config: AutomationConfig): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const payload = {
+    user_id: user.id,
+    is_active: config.isActive,
+    days: config.days,
+    start_hour: config.startHour,
+    end_hour: config.endHour,
+    interval_minutes: config.intervalMinutes,
+    last_shuffle_index: config.lastShuffleIndex,
+    shuffled_product_ids: config.shuffledProductIds,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('automation_config')
+    .upsert(payload, { onConflict: 'user_id' });
+
+  if (error) throw error;
 };
