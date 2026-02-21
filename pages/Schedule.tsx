@@ -274,11 +274,15 @@ export const Schedule: React.FC = () => {
                 <div>
                   {schedule.status === 'sent' ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                      Enviado
+                      ✅ Enviado
+                    </span>
+                  ) : schedule.status === 'failed' ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                      ❌ Falhou
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                      Pendente
+                      ⏳ Pendente
                     </span>
                   )}
                 </div>

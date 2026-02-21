@@ -100,31 +100,68 @@ export const Integrations: React.FC = () => {
         if (!settings) return;
         const config = getConfig(activeTab);
 
-        // Check if fields are filled
-        if (!config.credentials.partnerId || !config.credentials.apiKey) {
-            setTestResult({ success: false, message: 'Preencha App ID e Senha antes de testar.' });
-            return;
-        }
-
         setTesting(true);
         setTestResult(null);
 
         try {
-            const result = await validateShopeeCredentials(
-                config.credentials.partnerId,
-                config.credentials.apiKey
-            );
+            if (activeTab === 'shopee') {
+                // Shopee test
+                if (!config.credentials.partnerId || !config.credentials.apiKey) {
+                    setTestResult({ success: false, message: 'Preencha App ID e Senha antes de testar.' });
+                    setTesting(false);
+                    return;
+                }
+                const result = await validateShopeeCredentials(
+                    config.credentials.partnerId,
+                    config.credentials.apiKey
+                );
+                if (result.valid) {
+                    setTestResult({ success: true, message: 'Conexão estabelecida com sucesso! API Ativa.' });
+                } else {
+                    setTestResult({
+                        success: false,
+                        message: result.message || 'Falha na conexão. Verifique suas credenciais.'
+                    });
+                }
+            } else if (activeTab === 'whatsapp') {
+                // Green API test
+                const { instanceId, token, destinationChat } = config.credentials;
+                if (!instanceId || !token) {
+                    setTestResult({ success: false, message: 'Preencha o ID da Instância e Token antes de testar.' });
+                    setTesting(false);
+                    return;
+                }
+                if (!destinationChat) {
+                    setTestResult({ success: false, message: 'Preencha o Chat de Destino antes de testar.' });
+                    setTesting(false);
+                    return;
+                }
 
-            if (result.valid) {
-                setTestResult({ success: true, message: 'Conexão estabelecida com sucesso! API Ativa.' });
-            } else {
-                setTestResult({
-                    success: false,
-                    message: result.message || 'Falha na conexão. Verifique suas credenciais.'
+                const chatId = destinationChat.includes('@') ? destinationChat : `${destinationChat}@c.us`;
+                const url = `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId,
+                        message: '✅ FlowMasterIA conectado com sucesso!\n\nSeu WhatsApp está integrado e pronto para enviar ofertas automaticamente. 🚀'
+                    })
                 });
+
+                const data = await response.json();
+
+                if (response.ok && data.idMessage) {
+                    setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso! ID: ${data.idMessage.slice(0, 12)}...` });
+                } else {
+                    setTestResult({
+                        success: false,
+                        message: data.message || 'Falha no envio. Verifique suas credenciais e se o WhatsApp está conectado.'
+                    });
+                }
             }
         } catch (error) {
-            setTestResult({ success: false, message: 'Erro ao testar a conexão.' });
+            setTestResult({ success: false, message: 'Erro ao testar a conexão. Verifique sua internet.' });
         } finally {
             setTesting(false);
         }
@@ -241,39 +278,62 @@ export const Integrations: React.FC = () => {
                                     </>
                                 ) : (
                                     <>
-                                        {/* WhatsApp fields */}
+                                        {/* WhatsApp Green API fields */}
                                         <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-4">
                                             <p className="text-sm text-emerald-800 dark:text-emerald-300">
-                                                <strong>WhatsApp API (Gateway):</strong> Conecte-se a uma instância do WhatsApp (ex: Evolution API, Z-API).
+                                                <strong>Green API (Gratuito):</strong> Conecte seu WhatsApp via{' '}
+                                                <a href="https://console.green-api.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-emerald-600">
+                                                    console.green-api.com
+                                                </a>
+                                                {' '}— plano Developer (free).
                                             </p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">URL Base da API</label>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">ID da Instância (idInstance)</label>
                                             <div className="relative">
-                                                <UserIcon className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
+                                                <Key className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
                                                 <input
                                                     type="text"
-                                                    value={getConfig(activeTab).credentials.baseUrl || ''}
-                                                    onChange={(e) => updateIntegration(activeTab, 'baseUrl', e.target.value)}
+                                                    value={getConfig(activeTab).credentials.instanceId || ''}
+                                                    onChange={(e) => updateIntegration(activeTab, 'instanceId', e.target.value)}
                                                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                                                    placeholder="Ex: https://api.meudominio.com"
+                                                    placeholder="Ex: 7103524545"
                                                 />
                                             </div>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Número gerado ao criar a instância no painel Green API</p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">API Token / Key</label>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Token da API (apiTokenInstance)</label>
                                             <div className="relative">
-                                                <Key className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
+                                                <Shield className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
                                                 <input
                                                     type="password"
                                                     value={getConfig(activeTab).credentials.token || ''}
                                                     onChange={(e) => updateIntegration(activeTab, 'token', e.target.value)}
                                                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                                                    placeholder="••••••••••••••••"
+                                                    placeholder="af0f62aae99d480d..."
                                                 />
                                             </div>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Chave secreta da instância Green API</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">Chat de Destino (número ou grupo)</label>
+                                            <div className="relative">
+                                                <UserIcon className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
+                                                <input
+                                                    type="text"
+                                                    value={getConfig(activeTab).credentials.destinationChat || ''}
+                                                    onChange={(e) => updateIntegration(activeTab, 'destinationChat', e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                                                    placeholder="5511999999999"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                                Número com código do país (sem +) ou ID do grupo. Ex: <strong>5511999999999</strong>
+                                            </p>
                                         </div>
                                     </>
                                 )}
@@ -290,7 +350,7 @@ export const Integrations: React.FC = () => {
                                         </div>
                                     )}
                                     <div className="flex space-x-3 ml-auto">
-                                        {activeTab === 'shopee' && (
+                                        {(activeTab === 'shopee' || activeTab === 'whatsapp') && (
                                             <button
                                                 type="button"
                                                 onClick={handleTestConnection}
@@ -298,7 +358,7 @@ export const Integrations: React.FC = () => {
                                                 className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 px-4 py-2.5 rounded-lg transition-colors flex items-center disabled:opacity-70"
                                             >
                                                 {testing ? <Loader2 className="animate-spin mr-2" size={18} /> : <Shield className="mr-2" size={18} />}
-                                                Testar Conexão
+                                                {activeTab === 'whatsapp' ? 'Enviar Teste' : 'Testar Conexão'}
                                             </button>
                                         )}
                                         <button
