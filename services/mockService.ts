@@ -312,9 +312,11 @@ export const fetchSettings = async (): Promise<AppSettings> => {
 };
 
 export const saveSettings = async (settings: AppSettings): Promise<void> => {
+  console.log('DEBUG: Iniciando saveSettings no Supabase/localStorage', settings);
   const { data: { user } } = await supabase.auth.getUser();
+
   if (!user) {
-    // Fallback if not logged in
+    console.warn('DEBUG: Usuário não autenticado, salvando apenas no localStorage');
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     return;
   }
@@ -333,17 +335,19 @@ export const saveSettings = async (settings: AppSettings): Promise<void> => {
     .upsert(
       {
         user_id: user.id,
-        settings,
+        settings: settings, // Explicitly pass settings
         updated_at: new Date().toISOString()
       },
       { onConflict: 'user_id' }
     );
 
   if (error) {
-    console.error('Error saving settings:', error);
+    console.error('DEBUG: Erro ao salvar no Supabase:', error);
     // Fallback to localStorage
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    throw new Error('Falha ao salvar configurações');
+    throw new Error('Falha ao salvar configurações no banco de dados');
+  } else {
+    console.log('DEBUG: Configurações salvas com sucesso no Supabase');
   }
 };
 

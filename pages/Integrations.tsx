@@ -40,30 +40,30 @@ export const Integrations: React.FC = () => {
     };
 
     const updateIntegration = (id: IntegrationId, field: string, value: string) => {
-        if (!settings) return;
+        setSettings(prev => {
+            if (!prev) return prev;
+            const currentIntegrations = prev.integrations || [];
+            const index = currentIntegrations.findIndex(i => i.id === id);
+            let newIntegrations = [...currentIntegrations];
 
-        const currentIntegrations = settings.integrations || [];
-        const index = currentIntegrations.findIndex(i => i.id === id);
-        let newIntegrations = [...currentIntegrations];
-
-        if (index >= 0) {
-            newIntegrations[index] = {
-                ...newIntegrations[index],
-                credentials: {
-                    ...newIntegrations[index].credentials,
-                    [field]: value
-                }
-            };
-        } else {
-            newIntegrations.push({
-                id,
-                name: id.charAt(0).toUpperCase() + id.slice(1),
-                isEnabled: true,
-                credentials: { [field]: value }
-            });
-        }
-
-        setSettings({ ...settings, integrations: newIntegrations });
+            if (index >= 0) {
+                newIntegrations[index] = {
+                    ...newIntegrations[index],
+                    credentials: {
+                        ...newIntegrations[index].credentials,
+                        [field]: value
+                    }
+                };
+            } else {
+                newIntegrations.push({
+                    id,
+                    name: id.charAt(0).toUpperCase() + id.slice(1),
+                    isEnabled: true,
+                    credentials: { [field]: value }
+                });
+            }
+            return { ...prev, integrations: newIntegrations };
+        });
     };
 
     const toggleIntegration = async (id: IntegrationId) => {
@@ -425,7 +425,11 @@ export const Integrations: React.FC = () => {
                                                                         type="button"
                                                                         onClick={() => {
                                                                             const keys = ['destinationChat', 'destinationChat2', 'destinationChat3'] as const;
-                                                                            updateIntegration(activeTab, keys[i], '');
+                                                                            // Find which field this chatId actually belongs to
+                                                                            const fieldToClear = keys.find(k => creds[k] === chatId);
+                                                                            if (fieldToClear) {
+                                                                                updateIntegration(activeTab, fieldToClear, '');
+                                                                            }
                                                                         }}
                                                                         className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
                                                                     >
@@ -553,6 +557,26 @@ export const Integrations: React.FC = () => {
                                         </div>
                                     )}
                                     <div className="flex space-x-3 ml-auto">
+                                        <button
+                                            type="button"
+                                            disabled={saving || testing}
+                                            onClick={() => {
+                                                if (confirm('Tem certeza que deseja limpar as credenciais desta integração?')) {
+                                                    const id = activeTab;
+                                                    setSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const newIntegrations = (prev.integrations || []).map(i =>
+                                                            i.id === id ? { ...i, credentials: {} } : i
+                                                        );
+                                                        return { ...prev, integrations: newIntegrations };
+                                                    });
+                                                    setTestResult({ success: true, message: 'Configurações limpas. Clique em Salvar para confirmar.' });
+                                                }
+                                            }}
+                                            className="text-gray-500 hover:text-red-600 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                                        >
+                                            Limpar Campos
+                                        </button>
                                         {(activeTab === 'shopee' || activeTab === 'whatsapp') && (
                                             <button
                                                 type="button"
