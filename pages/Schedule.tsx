@@ -157,12 +157,8 @@ export const Schedule: React.FC = () => {
         setTestResult({ ok: false, message: 'Configure o WhatsApp em Integrações primeiro!' });
         return;
       }
-      const { instanceId, token, destinationChat, destinationChat2, destinationChat3 } = whatsappConfig.credentials;
-      const allChats: string[] = [];
-      if (destinationChat) allChats.push(destinationChat.includes('@') ? destinationChat : `${destinationChat}@c.us`);
-      if (destinationChat2) allChats.push(destinationChat2.includes('@') ? destinationChat2 : `${destinationChat2}@c.us`);
-      if (destinationChat3) allChats.push(destinationChat3.includes('@') ? destinationChat3 : `${destinationChat3}@c.us`);
-      if (allChats.length === 0) {
+      const { destinationChat, destinationChat2, destinationChat3 } = whatsappConfig.credentials;
+      if (!destinationChat && !destinationChat2 && !destinationChat3) {
         setTestResult({ ok: false, message: 'Nenhum destino configurado nas Integrações!' });
         return;
       }
@@ -171,41 +167,31 @@ export const Schedule: React.FC = () => {
         setTestResult({ ok: false, message: 'Nenhum produto ativo cadastrado.' });
         return;
       }
-      const randomProd = activeProds[Math.floor(Math.random() * activeProds.length)];
-      const price = randomProd.price || 0;
-      const oldPrice = price > 0 ? price * 1.3 : 0;
-      const formatPrice = (p: number) => `R$ ${p.toFixed(2).replace('.', ',')}`;
-      const link = randomProd.affiliate_link || '';
-      let message = '';
-      if (randomProd.salesCopy) {
-        message = randomProd.salesCopy;
-      } else if (appSettings?.salesTemplate) {
-        message = appSettings.salesTemplate
-          .replace(/\{nome\}/gi, randomProd.title)
-          .replace(/\{titulo\}/gi, randomProd.title)
-          .replace(/\{preco\}/gi, formatPrice(price))
-          .replace(/\{preco_original\}/gi, formatPrice(oldPrice))
-          .replace(/\{link\}/gi, link)
-          .replace(/\{desconto\}/gi, '30%');
-      } else {
-        message = `\u{1F525} OFERTA RELÂMPAGO! \u{1F525}\n\n${randomProd.title}\n\n\u{274C} De: ~${formatPrice(oldPrice)}~\n\u2705 AGORA POR APENAS: ${formatPrice(price)}\n\n\u{1F6A8} CORRA! Estoque LIMITADO!\n\n\u{1F449} GARANTA O SEU AQUI:\n${link}\n\n\u{23F0} Promoção por TEMPO LIMITADO!`;
-      }
-      let allOk = true;
-      for (const chatId of allChats) {
-        const res = await fetch(`https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId, message })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.idMessage) allOk = false;
-      }
-      setTestResult({
-        ok: allOk,
-        message: allOk
-          ? `\u2705 "${randomProd.title}" enviado para ${allChats.length} destino(s)!`
-          : 'Falha ao enviar. Verifique credenciais e conexão do WhatsApp.'
+
+      // Call Edge Function which handles Green API server-to-server (no CORS)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ test: true })
       });
+      const data = await res.json();
+
+      if (res.ok && data.results) {
+        const sentResult = data.results.find((r: any) => r.status === 'sent');
+        if (sentResult) {
+          setTestResult({ ok: true, message: `✅ "${sentResult.product}" enviado para ${sentResult.chats} destino(s)! (${sentResult.index})` });
+        } else {
+          const reason = data.results[0]?.skipped || data.results[0]?.error || 'desconhecido';
+          setTestResult({ ok: false, message: `Não enviou. Motivo: ${reason}` });
+        }
+      } else {
+        setTestResult({ ok: false, message: data.error || 'Falha ao chamar função de envio.' });
+      }
     } catch (err) {
       setTestResult({ ok: false, message: `Erro: ${err}` });
     } finally {
@@ -412,9 +398,9 @@ export const Schedule: React.FC = () => {
       <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden">
         <div className="p-4 border-b border-[var(--color-border)] flex items-center gap-2">
           <Calendar size={18} className="text-emerald-500" />
-          <h3 className="font-semibold text-[var(--color-text-main)]">Pr\u00f3ximos Envios</h3>
+          <h3 className="font-semibold text-[var(--color-text-main)]">Próximos Envios</h3>
           <span className="ml-auto text-xs text-[var(--color-text-muted)] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-            {nextSends.length > 0 ? `Pr\u00f3ximos ${nextSends.length}` : 'Nenhum'}
+            {nextSends.length > 0 ? `Próximos ${nextSends.length}` : 'Nenhum'}
           </span>
         </div>
 
@@ -446,8 +432,8 @@ export const Schedule: React.FC = () => {
                     </p>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isToday
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                     }`}>
                     <Clock size={12} />
                     {isToday ? 'Hoje' : send.time.toLocaleDateString('pt-BR', { weekday: 'short' })}
