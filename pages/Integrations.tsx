@@ -128,39 +128,51 @@ export const Integrations: React.FC = () => {
                     });
                 }
             } else if (activeTab === 'whatsapp') {
-                // Green API test
-                const { instanceId, token, destinationChat } = config.credentials;
+                // Green API test via Edge Function (to avoid CORS)
+                const { instanceId, token, destinationChat, destinationChat2, destinationChat3 } = config.credentials;
                 if (!instanceId || !token) {
                     setTestResult({ success: false, message: 'Preencha o ID da Instância e Token antes de testar.' });
                     setTesting(false);
                     return;
                 }
-                if (!destinationChat) {
-                    setTestResult({ success: false, message: 'Preencha o Chat de Destino antes de testar.' });
+
+                // Use the first available chat for the test
+                const firstChat = destinationChat || destinationChat2 || destinationChat3;
+                if (!firstChat) {
+                    setTestResult({ success: false, message: 'Adicione pelo menos um destino de envio antes de testar.' });
                     setTesting(false);
                     return;
                 }
 
-                const chatId = destinationChat.includes('@') ? destinationChat : `${destinationChat}@c.us`;
-                const url = `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`;
+                const chatId = firstChat.includes('@') ? firstChat : `${firstChat}@c.us`;
 
-                const response = await fetch(url, {
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+                const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseKey}`
+                    },
                     body: JSON.stringify({
-                        chatId,
-                        message: '✅ FlowMasterIA conectado com sucesso!\n\nSeu WhatsApp está integrado e pronto para enviar ofertas automaticamente. 🚀'
+                        directTest: {
+                            instanceId,
+                            token,
+                            chatId,
+                            message: '✅ Conexão Green API testada com sucesso via FlowMasterIA!'
+                        }
                     })
                 });
 
                 const data = await response.json();
 
-                if (response.ok && data.idMessage) {
-                    setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso! ID: ${data.idMessage.slice(0, 12)}...` });
+                if (response.ok && data.success) {
+                    setTestResult({ success: true, message: `Mensagem de teste enviada com sucesso para ${chatId.split('@')[0]}!` });
                 } else {
                     setTestResult({
                         success: false,
-                        message: data.message || 'Falha no envio. Verifique suas credenciais e se o WhatsApp está conectado.'
+                        message: data.error || data.data?.message || 'Falha no envio. Verifique credenciais e se o WhatsApp está conectado.'
                     });
                 }
             }
