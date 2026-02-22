@@ -90,6 +90,14 @@ Deno.serve(async (req: Request) => {
         const finalUrl = response.url || url;
         const html = await response.text();
 
+        // --- CHECK FOR AMAZON CAPTCHA / ANTI-BOT ---
+        if (html.includes('api-services-support@amazon.com') ||
+            html.includes('To discuss automated access to Amazon data please contact') ||
+            html.includes('Type the characters you see in this image') ||
+            html.includes('Digite os caracteres que você vê na imagem abaixo')) {
+            throw new Error('Anti-bot da Amazon bloqueou a extração. Tente novamente ou use inserção manual.');
+        }
+
         const getMeta = (prop: string): string | null => {
             const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
             const m1 = html.match(r1);
@@ -133,6 +141,14 @@ Deno.serve(async (req: Request) => {
         } catch { }
 
         let price = apiPrice || jsonLdPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
+
+        // Enhanced Mercado Livre NORDIC_RENDERING_CTX fallback
+        if (!price || price === '0' || price === '0.00') {
+            const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i);
+            if (mlMatch) {
+                price = mlMatch[1];
+            }
+        }
 
         // Enhanced Shopee/Generic fallback: detect the SMALLEST price in the page if range exists
         if (!price || price === '0' || price === '0.00') {
