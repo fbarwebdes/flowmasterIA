@@ -528,15 +528,13 @@ export const Products: React.FC = () => {
                         >
                           <Send size={18} />
                         </button>
-                        {product.salesCopy && (
-                          <button
-                            onClick={() => openPreview(product)}
-                            className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                            title="Ver Template Salvo"
-                          >
-                            <Eye size={18} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => openPreview(product)}
+                          className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                          title="Ver Template Salvo"
+                        >
+                          <Eye size={18} />
+                        </button>
                         <button
                           onClick={() => openScheduleModal(product)}
                           className="p-2 rounded-lg transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
