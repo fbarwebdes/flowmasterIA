@@ -165,6 +165,7 @@ Deno.serve(async (req: Request) => {
 
         if (!product.price || product.price <= 0) {
           console.log(`Skipping product ${product.title} due to zero price.`);
+          results.push({ user: config.user_id, status: 'failed', skipped: 'Produto selecionado está sem preço', product: product.title });
           if (!isTest) currentIndex++;
           continue;
         }
