@@ -1,194 +1,158 @@
 // @ts-nocheck - This file runs in Deno (Supabase Edge Functions), not Node.js
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Generate SHA256 signature for Shopee Affiliate API
+async function generateSignature(appId: string, timestamp: number, payload: string, secret: string) {
+    const baseString = `${appId}${timestamp}${payload}${secret}`;
+    const encoder = new TextEncoder();
+    const msgData = encoder.encode(baseString);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgData);
+    return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req: Request) => {
-    // Handle CORS
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
     try {
-        const { url } = await req.json()
+        const { url, userId } = await req.json();
+        if (!url) throw new Error('URL is required');
 
-        if (!url) {
-            throw new Error('URL is required')
+        console.log(`Fetching metadata for: ${url} (User: ${userId || 'anonymous'})`);
+
+        // --- SHOPEE ID EXTRACTION ---
+        let shopeeIds = null;
+        if (url.includes('shopee.com.br')) {
+            const p1 = url.match(/product\/(\d+)\/(\d+)/i);
+            if (p1) shopeeIds = { shopId: p1[1], itemId: p1[2] };
+            else {
+                const p2 = url.match(/-i\.(\d+)\.(\d+)/i);
+                if (p2) shopeeIds = { shopId: p2[1], itemId: p2[2] };
+            }
         }
 
-        // validate URL
-        try {
-            new URL(url);
-        } catch {
-            throw new Error('Invalid URL provided');
+        let apiTitle = null;
+        let apiPrice = null;
+        let apiImage = null;
+
+        // --- TRY SHOPEE API IF CREDENTIALS EXIST ---
+        if (shopeeIds && userId) {
+            try {
+                const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+                const { data: row } = await supabase.from('app_settings').select('settings').eq('user_id', userId).single();
+                const shopeeConfig = row?.settings?.integrations?.find(i => i.id === 'shopee');
+                const appId = shopeeConfig?.credentials?.partnerId;
+                const secret = shopeeConfig?.credentials?.apiKey;
+
+                if (appId && secret && shopeeConfig.isEnabled) {
+                    const payload = JSON.stringify({
+                        query: `query{productOfferV2(itemId:\"${shopeeIds.itemId}\",shopId:\"${shopeeIds.shopId}\"){nodes{productName,priceMin,imageUrl}}}`
+                    });
+                    const timestamp = Math.floor(Date.now() / 1000);
+                    const signature = await generateSignature(appId, timestamp, payload, secret);
+
+                    const apiRes = await fetch("https://open-api.affiliate.shopee.com.br/graphql", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `SHA256 Credential=${appId},Timestamp=${timestamp},Signature=${signature}`,
+                        },
+                        body: payload,
+                    });
+
+                    const resJson = await apiRes.json();
+                    const node = resJson.data?.productOfferV2?.nodes?.[0];
+                    if (node) {
+                        apiTitle = node.productName;
+                        apiPrice = String(node.priceMin / 100000);
+                        apiImage = node.imageUrl;
+                        console.log(`Shopee API Hit: price=${apiPrice}`);
+                    }
+                }
+            } catch (apiErr) {
+                console.error('Shopee API Error:', apiErr.message);
+            }
         }
 
-        console.log(`Fetching metadata for: ${url}`);
-
-        // Fetch page HTML with redirect following and realistic browser User-Agent
+        // --- SCRAPING FALLBACK (If API failed or not Shopee/credentials) ---
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
             },
             redirect: 'follow',
         });
-
-        // Get the final URL after redirects (e.g., amzn.to -> amazon.com.br)
         const finalUrl = response.url || url;
-        console.log(`Final URL after redirect: ${finalUrl}`);
-
-        if (!response.ok) {
-            throw new Error(`Failed to load page: ${response.status} ${response.statusText}`);
-        }
-
         const html = await response.text();
 
-        // Extract meta content - handles both attribute orderings:
-        // <meta property="og:title" content="...">
-        // <meta content="..." property="og:title">
         const getMeta = (prop: string): string | null => {
-            // Pattern 1: property/name first, content second
-            const regex1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
-            const m1 = html.match(regex1);
+            const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
+            const m1 = html.match(r1);
             if (m1) return m1[1];
-
-            // Pattern 2: content first, property/name second
-            const regex2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
-            const m2 = html.match(regex2);
+            const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
+            const m2 = html.match(r2);
             if (m2) return m2[1];
-
             return null;
         };
 
-        // --- TITLE ---
-        let title = getMeta('og:title') || getMeta('twitter:title') || getMeta('title') || '';
-
-        // Amazon-specific title extraction via <title> tag or #productTitle
-        if (!title || title === 'Produto sem título') {
-            // Try <title> tag
-            const titleTag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-            if (titleTag) {
-                title = titleTag[1].trim();
-                // Clean Amazon title suffixes
-                title = title.replace(/\s*[-|:]\s*Amazon\.com\.br.*$/i, '').trim();
-                title = title.replace(/\s*[-|:]\s*Amazon\.com.*$/i, '').trim();
-                title = title.replace(/\s*[-|:]\s*Mercado Livre.*$/i, '').trim();
-            }
-        }
-
-        // Amazon-specific: extract from productTitle span
+        let title = apiTitle || getMeta('og:title') || getMeta('twitter:title') || getMeta('title') || '';
         if (!title || title.length < 5) {
-            const productTitle = html.match(/id=["']productTitle["'][^>]*>\s*([^<]+)/i);
-            if (productTitle) {
-                title = productTitle[1].trim();
-            }
+            const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+            if (tag) title = tag[1].trim().replace(/\s*[-|:]\s*Amazon\.com.*$/i, '').replace(/\s*[-|:]\s*Mercado Livre.*$/i, '').trim();
         }
 
-        // --- IMAGE ---
-        let image = getMeta('og:image') || getMeta('twitter:image') || '';
-
-        // Amazon-specific image extraction - multiple fallbacks
+        let image = apiImage || getMeta('og:image') || getMeta('twitter:image') || '';
         if (!image) {
-            // Try data-old-hires attribute (high-res image on main product image)
-            const oldHires = html.match(/data-old-hires=["']([^"']+)["']/i);
-            if (oldHires) {
-                image = oldHires[1];
-            }
-        }
-        if (!image) {
-            // Try "hiRes":"https://..." in JavaScript (Amazon image gallery data)
-            const hiRes = html.match(/"hiRes"\s*:\s*"(https:\/\/[^"]+)"/i);
-            if (hiRes) {
-                image = hiRes[1];
-            }
-        }
-        if (!image) {
-            // Try "large":"https://..." in colorImages JSON
-            const largImg = html.match(/"large"\s*:\s*"(https:\/\/[^"]+)"/i);
-            if (largImg) {
-                image = largImg[1];
-            }
-        }
-        if (!image) {
-            // Try data-a-dynamic-image (JSON with image URLs as keys)
-            const dynamicImg = html.match(/data-a-dynamic-image=["']\{["']([^"']+)["']/i);
-            if (dynamicImg) {
-                image = dynamicImg[1];
-            }
-        }
-        if (!image) {
-            // Try landingImage id
-            const landingImg = html.match(/id=["']landingImage["'][^>]+(?:src|data-old-hires)=["']([^"']+)["']/i);
-            if (landingImg) {
-                image = landingImg[1];
-            }
-        }
-        if (!image) {
-            // Try imgBlkFront id
-            const imgBlk = html.match(/id=["']imgBlkFront["'][^>]+src=["']([^"']+)["']/i);
-            if (imgBlk) {
-                image = imgBlk[1];
-            }
-        }
-        if (!image) {
-            // Generic fallback: find any Amazon CDN product image URL
-            const amazonCdn = html.match(/(https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9._%-]+\.(?:jpg|png|webp))/i);
-            if (amazonCdn) {
-                image = amazonCdn[1];
-            }
+            const match = html.match(/(https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9._%-]+\.(?:jpg|png|webp))/i);
+            if (match) image = match[1];
         }
 
-        // --- PRICE ---
-        let price = getMeta('product:price:amount') || getMeta('og:price:amount');
-
-        // Amazon-specific price extraction
-        if (!price) {
-            // Try a-price-whole + a-price-fraction
-            const priceWhole = html.match(/class=["']a-price-whole["'][^>]*>(\d[\d.]*)/i);
-            const priceFraction = html.match(/class=["']a-price-fraction["'][^>]*>(\d+)/i);
-            if (priceWhole) {
-                const whole = priceWhole[1].replace('.', '');
-                const fraction = priceFraction ? priceFraction[1] : '00';
-                price = `${whole}.${fraction}`;
-            }
-        }
-
-        // Mercado Livre specific price (price-tag-fraction)
-        if (!price) {
-            const mlPrice = html.match(/class=["'][^"']*price-tag-fraction[^"']*["'][^>]*>(\d[\d.]*)/i);
-            if (mlPrice) {
-                price = mlPrice[1].replace('.', '');
-                const mlCents = html.match(/class=["'][^"']*price-tag-cents[^"']*["'][^>]*>(\d+)/i);
-                if (mlCents) {
-                    price = `${price}.${mlCents[1]}`;
+        let jsonLdPrice = null;
+        try {
+            const scripts = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+            if (scripts) {
+                for (const script of scripts) {
+                    const content = script.replace(/<script[^>]*>|<\/script>/gi, '').trim();
+                    const data = JSON.parse(content);
+                    const find = (obj: any): any => {
+                        if (!obj || typeof obj !== 'object') return null;
+                        if (obj.price || obj.offers?.price) return String(obj.offers?.price || obj.price);
+                        if (Array.isArray(obj)) { for (const item of obj) { const p = find(item); if (p) return p; } }
+                        for (const k in obj) { const p = find(obj[k]); if (p) return p; }
+                        return null;
+                    };
+                    const p = find(data);
+                    if (p) { jsonLdPrice = String(p); break; }
                 }
             }
+        } catch { }
+
+        let price = apiPrice || jsonLdPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
+
+        if (!price || price === '0' || price === '0.00') {
+            const match = html.match(/R\$\s?([\d.]+,\d{2})/i);
+            if (match) price = match[1].replace(/\./g, '').replace(',', '.');
         }
 
-        // Generic fallback price: "R$ 100,00" or "R$ 1.299,00"
-        if (!price) {
-            const priceRegex = /R\$\s?([\d.]+,\d{2})/i;
-            const match = html.match(priceRegex);
-            if (match) {
-                price = match[1].replace('.', '').replace(',', '.');
+        if (price && typeof price === 'string') {
+            price = price.replace(/[^\d.,]/g, '').replace(',', '.');
+            if (price.split('.').length > 2) {
+                const parts = price.split('.');
+                const cents = parts.pop();
+                price = parts.join('') + '.' + cents;
             }
         }
 
-        // --- PLATFORM ---
         let platform = 'Other';
-        const combinedUrl = (url + ' ' + finalUrl).toLowerCase();
-        if (combinedUrl.includes('shopee')) platform = 'Shopee';
-        else if (combinedUrl.includes('amazon') || combinedUrl.includes('amzn.to') || combinedUrl.includes('amzn.com')) platform = 'Amazon';
-        else if (combinedUrl.includes('mercadolivre') || combinedUrl.includes('mercadolibre') || combinedUrl.includes('mlb-')) platform = 'Mercado Livre';
-        else if (combinedUrl.includes('aliexpress')) platform = 'AliExpress';
-        else if (combinedUrl.includes('magazineluiza') || combinedUrl.includes('magalu')) platform = 'Magazine Luiza';
-
-        console.log(`Extracted: title="${title?.substring(0, 60)}", price=${price}, image=${image ? 'yes' : 'no'}, platform=${platform}`);
+        const combined = (url + ' ' + finalUrl).toLowerCase();
+        if (combined.includes('shopee')) platform = 'Shopee';
+        else if (combined.includes('amazon') || combined.includes('amzn')) platform = 'Amazon';
+        else if (combined.includes('mercadolivre') || combined.includes('mlb-')) platform = 'Mercado Livre';
 
         return new Response(
             JSON.stringify({
@@ -201,23 +165,13 @@ Deno.serve(async (req: Request) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
     } catch (error: any) {
-        console.error('fetch-metadata error:', error.message);
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
-        )
+        return new Response(JSON.stringify({ error: error.message }), { headers: corsHeaders, status: 400 });
     }
 })
 
 function decodeHtmlEntities(text: string) {
     if (!text) return text;
-    return text
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, '&')
-        .replace(/&#x27;/g, "'")
-        .replace(/&#39;/g, "'")
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
+    return text.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
         .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
         .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }

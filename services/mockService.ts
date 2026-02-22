@@ -395,13 +395,15 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': supabaseKey,
       },
-      body: JSON.stringify({ url: link }),
+      body: JSON.stringify({ url: link, userId: user?.id }),
     });
 
     if (!response.ok) {
