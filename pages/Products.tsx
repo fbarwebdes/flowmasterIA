@@ -633,15 +633,13 @@ export const Products: React.FC = () => {
                   >
                     <Send size={16} />
                   </button>
-                  {product.salesCopy && (
-                    <button
-                      onClick={() => openPreview(product)}
-                      className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                      title="Ver Template"
-                    >
-                      <Eye size={16} />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => openPreview(product)}
+                    className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                    title="Ver Template"
+                  >
+                    <Eye size={16} />
+                  </button>
                   <button
                     onClick={() => openScheduleModal(product)}
                     className="p-2 rounded-lg transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
@@ -1063,14 +1061,15 @@ export const Products: React.FC = () => {
                 </div>
                 <div className="bg-[#e5ddd5] p-4 rounded-lg">
                   <div className="bg-white p-4 rounded-lg shadow-sm text-sm text-gray-800 whitespace-pre-wrap">
-                    {previewProduct.salesCopy}
+                    {previewProduct.salesCopy || generateFromTemplate(previewProduct)}
                   </div>
                 </div>
               </div>
               <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(previewProduct.salesCopy || '');
+                    const textToCopy = previewProduct.salesCopy || generateFromTemplate(previewProduct);
+                    navigator.clipboard.writeText(textToCopy);
                     alert('Texto copiado!');
                   }}
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm flex items-center space-x-2 font-medium"
