@@ -134,9 +134,15 @@ Deno.serve(async (req: Request) => {
 
         let price = apiPrice || jsonLdPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
 
+        // Enhanced Shopee/Generic fallback: detect the SMALLEST price in the page if range exists
         if (!price || price === '0' || price === '0.00') {
-            const match = html.match(/R\$\s?([\d.]+,\d{2})/i);
-            if (match) price = match[1].replace(/\./g, '').replace(',', '.');
+            const priceRegex = /R\$\s?([\d.]+,\d{2})/gi;
+            const matches = [...html.matchAll(priceRegex)];
+            if (matches.length > 0) {
+                // Convert all to numbers and pick the minimum
+                const prices = matches.map(m => parseFloat(m[1].replace(/\./g, '').replace(',', '.')));
+                price = String(Math.min(...prices));
+            }
         }
 
         if (price && typeof price === 'string') {

@@ -413,12 +413,41 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
     }
 
     const data = await response.json();
+    let { title, price, image, platform } = data;
+
+    // --- SHOPEE FALLBACK ---
+    // Se for Shopee e o preço for 0 ou suspeito, tenta a API oficial via shopee-products
+    if (platform === 'Shopee' && (!price || price === 0) && link.includes('shopee.com.br')) {
+      console.log('Price is 0 for Shopee, trying API fallback...');
+      try {
+        const shopeeCredentials = await getShopeeCredentials();
+        if (shopeeCredentials) {
+          // Extrai itemID do link
+          const match = link.match(/product\/\d+\/(\d+)/i) || link.match(/-i\.\d+\.(\d+)/i);
+          const itemId = match ? match[1] : '';
+
+          if (itemId) {
+            const shopeeData = await fetchShopeeProducts(itemId);
+            const product = shopeeData.find(p => String(p.item_id) === itemId) || shopeeData[0];
+
+            if (product) {
+              console.log('Shopee API Fallback Success:', product.item_price);
+              title = product.item_name;
+              price = product.item_price;
+              image = product.item_image;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Shopee Fallback Error:', err);
+      }
+    }
 
     return {
-      title: data.title || 'Produto sem título',
-      price: data.price || 0,
-      image: data.image || 'https://via.placeholder.com/200?text=No+Image',
-      platform: data.platform || 'Other'
+      title: title || 'Produto sem título',
+      price: price || 0,
+      image: image || 'https://via.placeholder.com/200?text=No+Image',
+      platform: platform || 'Other'
     };
   } catch (err) {
     console.error('Link Fetch Error:', err);
@@ -433,7 +462,7 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
 
 // ================= INTEGRATION IMPORT =================
 
-import { fetchShopeeProducts, importShopeeProducts } from './shopeeService';
+import { fetchShopeeProducts, importShopeeProducts, getShopeeCredentials } from './shopeeService';
 
 // SETTINGS_KEY moved to top
 
