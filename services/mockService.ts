@@ -393,8 +393,37 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
+    // --- SHOPEE LOGIC ---
+    // Sempre tentamos a API primeiro para Shopee para evitar Login Wall e garantir Menor Preço
+    if (link.includes('shopee.com.br')) {
+      console.log('Detected Shopee link, prioritizing API extraction (Ignoring Login Wall)...');
+      try {
+        const shopeeCredentials = await getShopeeCredentials();
+        if (shopeeCredentials) {
+          const match = link.match(/product\/\d+\/(\d+)/i) || link.match(/-i\.\d+\.(\d+)/i);
+          const itemId = match ? match[1] : '';
 
+          if (itemId) {
+            const shopeeData = await fetchShopeeProducts(itemId);
+            const product = shopeeData.find(p => String(p.item_id) === itemId) || shopeeData[0];
+
+            if (product) {
+              console.log('Shopee API Extraction Success - Price:', product.item_price);
+              return {
+                title: product.item_name,
+                price: product.item_price,
+                image: product.item_image,
+                platform: 'Shopee'
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Shopee API Extraction Failed, falling back to server scraping:', err);
+      }
+    }
+
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
     const { data: { user } } = await supabase.auth.getUser();
 
     const response = await fetch(edgeFunctionUrl, {
@@ -414,34 +443,6 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
 
     const data = await response.json();
     let { title, price, image, platform } = data;
-
-    // --- SHOPEE FALLBACK ---
-    // Se for Shopee e o preço for 0 ou suspeito, tenta a API oficial via shopee-products
-    if (platform === 'Shopee' && (!price || price === 0) && link.includes('shopee.com.br')) {
-      console.log('Price is 0 for Shopee, trying API fallback...');
-      try {
-        const shopeeCredentials = await getShopeeCredentials();
-        if (shopeeCredentials) {
-          // Extrai itemID do link
-          const match = link.match(/product\/\d+\/(\d+)/i) || link.match(/-i\.\d+\.(\d+)/i);
-          const itemId = match ? match[1] : '';
-
-          if (itemId) {
-            const shopeeData = await fetchShopeeProducts(itemId);
-            const product = shopeeData.find(p => String(p.item_id) === itemId) || shopeeData[0];
-
-            if (product) {
-              console.log('Shopee API Fallback Success:', product.item_price);
-              title = product.item_name;
-              price = product.item_price;
-              image = product.item_image;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Shopee Fallback Error:', err);
-      }
-    }
 
     return {
       title: title || 'Produto sem título',

@@ -157,6 +157,12 @@ Deno.serve(async (req: Request) => {
           }
           product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
           if (!product) { currentIndex++; continue; }
+
+          if (!product.price || product.price <= 0) {
+            console.log(`Skipping product ${product.title} due to zero price.`);
+            currentIndex++;
+            continue;
+          }
         }
 
         const price = product.price || 0;
