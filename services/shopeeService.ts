@@ -117,6 +117,11 @@ export const saveShopeeProduct = async (shopeeProduct: ShopeeProduct): Promise<P
     };
   }
 
+  if (shopeeProduct.item_price <= 0) {
+    console.warn('Skipping save for product with zero price:', shopeeProduct.item_name);
+    throw new Error('Preço do produto é zero ou inválido');
+  }
+
   const { data, error } = await supabase
     .from('products')
     .insert({
