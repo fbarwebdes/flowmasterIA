@@ -400,11 +400,12 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
       try {
         const shopeeCredentials = await getShopeeCredentials();
         if (shopeeCredentials) {
-          const match = link.match(/product\/\d+\/(\d+)/i) || link.match(/-i\.\d+\.(\d+)/i);
-          const itemId = match ? match[1] : '';
+          const match = link.match(/product\/(\d+)\/(\d+)/i) || link.match(/-i\.(\d+)\.(\d+)/i);
+          const shopId = match && match.length === 3 ? match[1] : '';
+          const itemId = match && match.length === 3 ? match[2] : match ? match[1] : '';
 
           if (itemId) {
-            const shopeeData = await fetchShopeeProducts(itemId);
+            const shopeeData = await fetchShopeeProducts(itemId, shopId);
             const product = shopeeData.find(p => String(p.item_id) === itemId) || shopeeData[0];
 
             if (product) {

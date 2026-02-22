@@ -62,7 +62,7 @@ async function callEdgeFunction(body: Record<string, any>): Promise<any> {
 }
 
 // Fetch products from Shopee via Edge Function
-export const fetchShopeeProducts = async (keyword: string = ''): Promise<ShopeeProduct[]> => {
+export const fetchShopeeProducts = async (keyword: string = '', shopId?: string): Promise<ShopeeProduct[]> => {
   const credentials = await getShopeeCredentials();
 
   if (!credentials || !credentials.appId) {
@@ -70,13 +70,19 @@ export const fetchShopeeProducts = async (keyword: string = ''): Promise<ShopeeP
   }
 
   try {
-    const data = await callEdgeFunction({
+    const payload: any = {
       appId: credentials.appId,
       appSecret: credentials.appSecret,
       action: 'search',
       keyword: keyword,
       limit: 50
-    });
+    };
+
+    if (shopId) {
+      payload.shopId = shopId;
+    }
+
+    const data = await callEdgeFunction(payload);
 
     if (data.warning) {
       console.warn('Shopee API Warning:', data.warning);
