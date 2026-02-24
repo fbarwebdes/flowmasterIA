@@ -1,4 +1,4 @@
-import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig, AutomationConfig } from '../types';
+import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig, AutomationConfig, DispatchRecord } from '../types';
 import { supabase } from './supabase';
 
 const SETTINGS_KEY = 'flowmaster_settings';
@@ -236,27 +236,36 @@ export const deleteSchedules = async (ids: string[]): Promise<void> => {
   }
 };
 
-// ================= DASHBOARD STATS =================
-
 export const fetchStats = async (): Promise<DashboardStats> => {
-  // Get product count
+  // Get product counts
   const { count: productCount } = await supabase
     .from('products')
     .select('*', { count: 'exact', head: true });
 
-  // Get active products count
   const { count: activeCount } = await supabase
     .from('products')
     .select('*', { count: 'exact', head: true })
     .eq('active', true);
 
+  // Get total dispatched (sent schedules)
+  const { count: totalSent } = await supabase
+    .from('schedules')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'sent');
+
+  // Get failed dispatches
+  const { count: totalFailed } = await supabase
+    .from('schedules')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'failed');
+
   // Get pending schedules
-  const { count: pendingSchedules } = await supabase
+  const { count: pendingCount } = await supabase
     .from('schedules')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
 
-  // Get posts sent today
+  // Get dispatches today (sent in the last 24h)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const { count: sentToday } = await supabase
@@ -265,12 +274,51 @@ export const fetchStats = async (): Promise<DashboardStats> => {
     .eq('status', 'sent')
     .gte('scheduled_time', today.toISOString());
 
+  const total = (totalSent || 0) + (totalFailed || 0);
+  const successRate = total > 0 ? Math.round(((totalSent || 0) / total) * 100) : 100;
+
   return {
     totalProducts: productCount || 0,
-    activeLinks: activeCount || 0,
-    lastShipment: `${pendingSchedules || 0} agendados`,
-    totalRevenue: sentToday || 0 // Reusing this field for "posts sent today"
+    activeProducts: activeCount || 0,
+    dispatchesToday: sentToday || 0,
+    totalDispatched: totalSent || 0,
+    successRate,
+    pendingSchedules: pendingCount || 0,
   };
+};
+
+export const fetchRecentDispatches = async (limit: number = 10): Promise<DispatchRecord[]> => {
+  const { data, error } = await supabase
+    .from('schedules')
+    .select(`
+      id,
+      product_id,
+      product_title,
+      product_image,
+      scheduled_time,
+      status,
+      platform,
+      products (title, image, price, platform)
+    `)
+    .in('status', ['sent', 'failed'])
+    .order('scheduled_time', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching dispatches:', error);
+    return [];
+  }
+
+  return data.map((d: any) => ({
+    id: d.id,
+    productTitle: d.products?.title || d.product_title || 'Produto',
+    productImage: d.products?.image || d.product_image || '',
+    productPrice: d.products?.price ? parseFloat(d.products.price) : 0,
+    productPlatform: d.products?.platform || 'Shopee',
+    platform: d.platform || 'WhatsApp',
+    status: d.status,
+    scheduledTime: d.scheduled_time,
+  }));
 };
 
 // ================= SETTINGS (Supabase Persisted) =================

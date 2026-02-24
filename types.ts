@@ -35,9 +35,22 @@ export interface Product {
 
 export interface DashboardStats {
   totalProducts: number;
-  activeLinks: number;
-  lastShipment: string;
-  totalRevenue: number;
+  activeProducts: number;
+  dispatchesToday: number;
+  totalDispatched: number;
+  successRate: number;
+  pendingSchedules: number;
+}
+
+export interface DispatchRecord {
+  id: string;
+  productTitle: string;
+  productImage: string;
+  productPrice: number;
+  productPlatform: string;
+  platform: string;
+  status: 'sent' | 'failed' | 'pending';
+  scheduledTime: string;
 }
 
 export interface User {
