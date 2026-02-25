@@ -1,17 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, Zap, Power, Save, Loader2, CheckCircle2, AlertCircle, XCircle, Package, Send } from 'lucide-react';
 import { fetchAutomationConfig, saveAutomationConfig, fetchSchedules, fetchProducts, fetchSettings } from '../services/mockService';
+import { ALL_DAYS, getNextSends } from '../services/automationService';
 import { AutomationConfig, DayOfWeek, Schedule as ScheduleType, Product } from '../types';
-
-const ALL_DAYS: { key: DayOfWeek; label: string; short: string }[] = [
-  { key: 'mon', label: 'Segunda', short: 'Seg' },
-  { key: 'tue', label: 'Terça', short: 'Ter' },
-  { key: 'wed', label: 'Quarta', short: 'Qua' },
-  { key: 'thu', label: 'Quinta', short: 'Qui' },
-  { key: 'fri', label: 'Sexta', short: 'Sex' },
-  { key: 'sat', label: 'Sábado', short: 'Sáb' },
-  { key: 'sun', label: 'Domingo', short: 'Dom' },
-];
 
 const INTERVALS = [
   { value: 20, label: '20 min' },
@@ -108,43 +99,7 @@ export const Schedule: React.FC = () => {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Calculate next upcoming sends based on config
-  const getNextSends = () => {
-    if (!config.isActive || config.days.length === 0 || sendsPerDay === 0) return [];
-    const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-    const activeDayNums = config.days.map(d => dayMap[d]);
-    const now = new Date();
-    const [startH, startM] = config.startHour.split(':').map(Number);
-    const [endH, endM] = config.endHour.split(':').map(Number);
-    const sends: { time: Date; product: Product }[] = [];
-    const activeProds = products.filter(p => p.active);
-    if (activeProds.length === 0) return [];
-    let prodIdx = 0;
-
-    for (let dayOffset = 0; dayOffset < 7 && sends.length < 15; dayOffset++) {
-      const checkDate = new Date(now);
-      checkDate.setDate(checkDate.getDate() + dayOffset);
-      if (!activeDayNums.includes(checkDate.getDay())) continue;
-
-      let curMin = startH * 60 + startM;
-      const endMin = endH * 60 + endM;
-      if (dayOffset === 0) {
-        const nowMin = now.getHours() * 60 + now.getMinutes();
-        if (nowMin > curMin) curMin = nowMin + (config.intervalMinutes - (nowMin % config.intervalMinutes));
-      }
-
-      while (curMin < endMin && sends.length < 15) {
-        const sendTime = new Date(checkDate);
-        sendTime.setHours(Math.floor(curMin / 60), curMin % 60, 0, 0);
-        sends.push({ time: sendTime, product: activeProds[prodIdx % activeProds.length] });
-        prodIdx++;
-        curMin += config.intervalMinutes;
-      }
-    }
-    return sends;
-  };
-
-  const nextSends = getNextSends();
+  const nextSends = getNextSends(config, products, 15);
 
   // Test send handler
   const handleTestSend = async () => {

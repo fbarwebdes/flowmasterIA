@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { fetchStats, fetchProducts, fetchRecentDispatches } from '../services/mockService';
-import { DashboardStats, Product, DispatchRecord } from '../types';
+import { fetchStats, fetchProducts, fetchRecentDispatches, fetchAutomationConfig } from '../services/mockService';
+import { getNextSends } from '../services/automationService';
+import { DashboardStats, Product, DispatchRecord, AutomationConfig } from '../types';
 import {
   Package, Send, Loader2, TrendingUp, CheckCircle2, XCircle,
-  Activity, Zap, ArrowUpRight, Clock, MessageCircle
+  Activity, Zap, ArrowUpRight, Clock, MessageCircle, Calendar
 } from 'lucide-react';
 
 // ── Stat Card ──
@@ -33,21 +34,24 @@ const StatCard = ({ title, value, subtext, icon: Icon, accent, accentBg }: StatC
 // ── Main Dashboard ──
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [dispatches, setDispatches] = useState<DispatchRecord[]>([]);
+  const [automationConfig, setAutomationConfig] = useState<AutomationConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsData, products, dispatchData] = await Promise.all([
+        const [statsData, prods, dispatchData, autoConfig] = await Promise.all([
           fetchStats(),
           fetchProducts(),
-          fetchRecentDispatches(10)
+          fetchRecentDispatches(10),
+          fetchAutomationConfig()
         ]);
         setStats(statsData);
-        setRecentProducts(products.slice(0, 5));
+        setAllProducts(prods);
         setDispatches(dispatchData);
+        setAutomationConfig(autoConfig);
       } catch (e) {
         console.error('Dashboard load error:', e);
       } finally {
@@ -189,8 +193,8 @@ export const Dashboard: React.FC = () => {
                     />
                     {/* Status Indicator */}
                     <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[var(--color-bg-card)] ${dispatch.status === 'sent'
-                        ? 'bg-emerald-500'
-                        : 'bg-red-500'
+                      ? 'bg-emerald-500'
+                      : 'bg-red-500'
                       }`}>
                       {dispatch.status === 'sent'
                         ? <CheckCircle2 size={12} className="text-white" />
@@ -220,8 +224,8 @@ export const Dashboard: React.FC = () => {
                   {/* Time + Status */}
                   <div className="text-right flex-shrink-0">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${dispatch.status === 'sent'
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
                       }`}>
                       {dispatch.status === 'sent' ? '✓ Enviado' : '✕ Falhou'}
                     </span>
@@ -236,50 +240,70 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Products */}
+        {/* Upcoming Sends */}
         <div className="bg-[var(--color-bg-card)] rounded-2xl border border-[var(--color-border)] overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
             <h3 className="font-semibold text-[var(--color-text-main)] flex items-center gap-2 text-sm sm:text-base">
-              <Package size={18} className="text-emerald-500" />
-              Produtos Recentes
+              <Calendar size={18} className="text-emerald-500" />
+              Próximos Envios
             </h3>
             <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
-              {recentProducts.length} itens
+              Próximos 15
             </span>
           </div>
           <div className="divide-y divide-[var(--color-border)] max-h-[420px] overflow-y-auto">
-            {recentProducts.length === 0 ? (
-              <div className="p-8 text-center text-[var(--color-text-muted)]">
-                <Package className="mx-auto mb-3 text-slate-300" size={36} />
-                <p className="text-sm">Nenhum produto cadastrado</p>
-              </div>
-            ) : (
-              recentProducts.map(product => (
-                <div key={product.id} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-[var(--color-bg-main)] transition-colors">
-                  <img
-                    src={product.image || 'https://via.placeholder.com/44'}
-                    alt={product.title}
-                    className="w-11 h-11 rounded-lg object-cover border border-[var(--color-border)] flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{product.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        {formatPrice(product.price)}
-                      </span>
-                      <span className="text-[10px] text-[var(--color-text-muted)] opacity-70">•</span>
-                      <span className="text-[10px] text-[var(--color-text-muted)]">{product.platform}</span>
-                    </div>
+            {(() => {
+              if (!automationConfig) return (
+                <div className="p-8 text-center text-[var(--color-text-muted)]">
+                  <Calendar className="mx-auto mb-3 text-slate-300" size={36} />
+                  <p className="text-sm">Configurando envios...</p>
+                </div>
+              );
+
+              const nextSends = getNextSends(automationConfig, allProducts, 15);
+
+              if (nextSends.length === 0) {
+                return (
+                  <div className="p-8 text-center text-[var(--color-text-muted)]">
+                    <Package className="mx-auto mb-3 text-slate-300" size={36} />
+                    <p className="text-sm">Nenhum envio agendado</p>
+                    <p className="text-xs opacity-70 mt-1">Verifique se há produtos ativos</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${product.active
+                );
+              }
+
+              return nextSends.map((send, idx) => {
+                const isToday = send.time.toDateString() === new Date().toDateString();
+                return (
+                  <div key={idx} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-[var(--color-bg-main)] transition-colors">
+                    <img
+                      src={send.product.image || 'https://via.placeholder.com/44'}
+                      alt={send.product.title}
+                      className="w-11 h-11 rounded-lg object-cover border border-[var(--color-border)] flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{send.product.title}</p>
+                      <p className="text-[10px] text-[var(--color-text-muted)]">
+                        {send.time.toLocaleString('pt-BR', {
+                          weekday: 'short',
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${isToday
                       ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
-                    }`}>
-                    {product.active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-              ))
-            )}
+                      }`}>
+                      <Clock size={10} />
+                      {isToday ? 'Hoje' : send.time.toLocaleDateString('pt-BR', { weekday: 'short' })}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
