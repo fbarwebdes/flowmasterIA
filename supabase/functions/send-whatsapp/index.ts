@@ -148,25 +148,66 @@ Deno.serve(async (req: Request) => {
         let shuffledIds = config.shuffled_product_ids || [];
         let currentIndex = config.last_shuffle_index || 0;
 
+        // If no shuffle list yet, create it
+        if (shuffledIds.length === 0) {
+          shuffledIds = shuffleArray(allProducts.map((p: any) => p.id));
+          currentIndex = 0;
+          await supabase.from('automation_config').update({
+            shuffled_product_ids: shuffledIds,
+            last_shuffle_index: 0
+          }).eq('id', config.id);
+        }
+
         if (isTest) {
           product = allProducts[Math.floor(Math.random() * allProducts.length)];
         } else {
-          if (shuffledIds.length === 0 || currentIndex >= shuffledIds.length) {
-            shuffledIds = shuffleArray(allProducts.map((p: any) => p.id));
-            currentIndex = 0;
-          }
-          product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
-        }
+          // Check if cycle is already complete
+          if (currentIndex >= shuffledIds.length) {
+            // Check if we should send a reminder (e.g. once every 12h if still in this state)
+            const lastSent = config.last_sent_at ? new Date(config.last_sent_at) : new Date(0);
+            const hoursSinceLast = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
 
-        if (!product) {
-          if (!isTest) currentIndex++;
-          continue;
+            if (hoursSinceLast >= 12) {
+              const alertMsg = "⚠️ *FlowMasterIA: Ciclo Shopee Finalizado!*\n\nTodos os produtos cadastrados já foram enviados em seus respectivos grupos. \n\nPara garantir que os envios não se repitam e manter o engajamento, por favor:\n1. Vá em *Produtos* e exclua os atuais.\n2. Faça uma *Nova Importação* via API Shopee.\n\nOs envios automáticos estão pausados até a atualização.";
+
+              for (const chatId of allChats) {
+                await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chatId, message: alertMsg })
+                });
+                await new Promise(r => setTimeout(r, 1000));
+              }
+
+              await supabase.from('automation_config').update({
+                last_sent_at: now.toISOString()
+              }).eq('id', config.id);
+
+              results.push({ user: config.user_id, status: 'cycle_alert_sent' });
+            } else {
+              results.push({ user: config.user_id, skipped: 'cycle_already_completed' });
+            }
+            continue;
+          }
+
+          product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
+
+          // If the product was deleted in the meantime, skip it
+          if (!product) {
+            currentIndex++;
+            await supabase.from('automation_config').update({ last_shuffle_index: currentIndex }).eq('id', config.id);
+            results.push({ user: config.user_id, skipped: 'product_not_found' });
+            continue;
+          }
         }
 
         if (!product.price || product.price <= 0) {
           console.log(`Skipping product ${product.title} due to zero price.`);
           results.push({ user: config.user_id, status: 'failed', skipped: 'Produto selecionado está sem preço', product: product.title });
-          if (!isTest) currentIndex++;
+          if (!isTest) {
+            currentIndex++;
+            await supabase.from('automation_config').update({ last_shuffle_index: currentIndex }).eq('id', config.id);
+          }
           continue;
         }
 
@@ -200,8 +241,42 @@ Deno.serve(async (req: Request) => {
         }
 
         await supabase.from('schedules').insert({ product_id: product.id, product_title: product.title, product_image: product.image, scheduled_time: now.toISOString(), status: sentOk ? 'sent' : 'failed', platform: 'WhatsApp' });
+
         if (!isTest) {
-          await supabase.from('automation_config').update({ last_shuffle_index: currentIndex + 1, shuffled_product_ids: shuffledIds, last_sent_at: now.toISOString() }).eq('id', config.id);
+          currentIndex++;
+
+          // Check if it was the last one
+          if (currentIndex >= shuffledIds.length) {
+            const completionMsg = "✅ *FlowMasterIA: Rodada Finalizada!*\n\nTodos os produtos Shopee salvos acabam de ser enviados. \n\n*Atenção:* Os envios serão pausados até que novos produtos sejam importados para garantir que não haja repetições.";
+
+            for (const chatId of allChats) {
+              await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, message: completionMsg })
+              });
+              await new Promise(r => setTimeout(r, 1000));
+            }
+          }
+          // Warn when running low (5 items left)
+          else if (shuffledIds.length - currentIndex === 5) {
+            const lowMsg = "⚠️ *FlowMasterIA: Produtos Acabando!*\n\nRestam apenas *5 produtos* Shopee para serem enviados neste ciclo. \n\nLembre-se de preparar uma nova importação em breve.";
+
+            for (const chatId of allChats) {
+              await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, message: lowMsg })
+              });
+              await new Promise(r => setTimeout(r, 1000));
+            }
+          }
+
+          await supabase.from('automation_config').update({
+            last_shuffle_index: currentIndex,
+            shuffled_product_ids: shuffledIds,
+            last_sent_at: now.toISOString()
+          }).eq('id', config.id);
         }
         results.push({ user: config.user_id, status: sentOk ? 'sent' : 'failed', product: product.title });
       } catch (e) { results.push({ user: config.user_id, error: String(e) }); }

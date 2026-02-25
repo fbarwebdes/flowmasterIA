@@ -175,6 +175,29 @@ export const Schedule: React.FC = () => {
         </button>
       </div>
 
+      {/* Cycle Completion Alert */}
+      {config.shuffledProductIds && config.shuffledProductIds.length > 0 && config.lastShuffleIndex >= config.shuffledProductIds.length && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-500/50 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4 text-amber-800 dark:text-amber-200 shadow-lg shadow-amber-100 dark:shadow-none animate-pulse">
+          <div className="bg-amber-500 text-white p-3 rounded-xl">
+            <AlertCircle size={24} />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h4 className="font-bold text-lg">Ciclagem Shopee Finalizada!</h4>
+            <p className="text-sm opacity-90 mt-1">
+              Todos os {config.shuffledProductIds.length} produtos do ciclo atual foram enviados.
+              <strong> A automação está pausada</strong> para evitar repetições indesejadas.
+              Importe novos produtos para iniciar uma nova rodada.
+            </p>
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'products' }))}
+            className="whitespace-nowrap bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+          >
+            Importar agora
+          </button>
+        </div>
+      )}
+
       {/* Master Toggle */}
       <div className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${config.isActive
         ? 'border-emerald-500 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 shadow-lg shadow-emerald-100 dark:shadow-none'
