@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, Zap, Power, Save, Loader2, CheckCircle2, AlertCircle, XCircle, Package, Send } from 'lucide-react';
 import { fetchAutomationConfig, saveAutomationConfig, fetchSchedules, fetchProducts, fetchSettings } from '../services/mockService';
-import { ALL_DAYS, getNextSends } from '../services/automationService';
+import { ALL_DAYS } from '../services/automationService';
 import { AutomationConfig, DayOfWeek, Schedule as ScheduleType, Product } from '../types';
 
 const INTERVALS = [
@@ -99,8 +99,6 @@ export const Schedule: React.FC = () => {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
-  const nextSends = getNextSends(config, products, 15);
-
   // Test send handler
   const handleTestSend = async () => {
     setSendingTest(true);
@@ -157,9 +155,9 @@ export const Schedule: React.FC = () => {
   if (loading) return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto px-1 sm:px-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Cronograma Automático</h1>
           <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Configure e os envios acontecem sozinhos.</p>
@@ -167,9 +165,9 @@ export const Schedule: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg shadow-sm text-sm font-medium transition-all ${saved
+          className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl shadow-sm text-sm font-semibold transition-all w-full sm:w-auto ${saved
             ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
             }`}
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <CheckCircle2 size={18} /> : <Save size={18} />}
@@ -178,13 +176,13 @@ export const Schedule: React.FC = () => {
       </div>
 
       {/* Master Toggle */}
-      <div className={`rounded-xl border-2 transition-all duration-300 ${config.isActive
-        ? 'border-emerald-500 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 shadow-lg shadow-emerald-100 dark:shadow-none'
+      <div className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${config.isActive
+        ? 'border-emerald-500 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 shadow-lg shadow-emerald-100 dark:shadow-none'
         : 'border-[var(--color-border)] bg-[var(--color-bg-card)]'
         }`}>
-        <div className="p-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${config.isActive ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+        <div className="p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${config.isActive ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-none' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
               }`}>
               <Power size={24} />
             </div>
@@ -193,13 +191,13 @@ export const Schedule: React.FC = () => {
                 {config.isActive ? '🟢 Automação Ativa' : '⚫ Automação Desligada'}
               </h2>
               <p className="text-sm text-[var(--color-text-muted)]">
-                {config.isActive ? 'Enviando produtos automaticamente via WhatsApp' : 'Clique para ativar os envios automáticos'}
+                {config.isActive ? 'Enviando produtos via WhatsApp' : 'Clique para ativar os envios'}
               </p>
             </div>
           </div>
           <button
             onClick={() => setConfig(prev => ({ ...prev, isActive: !prev.isActive }))}
-            className={`relative w-16 h-8 rounded-full transition-all duration-300 ${config.isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+            className={`relative w-16 h-8 rounded-full transition-all duration-300 flex-shrink-0 ${config.isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
               }`}
           >
             <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${config.isActive ? 'left-9' : 'left-1'
@@ -211,93 +209,94 @@ export const Schedule: React.FC = () => {
       {/* Config Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Days Selector */}
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <Calendar size={18} className="text-emerald-500" />
               <h3 className="font-semibold text-[var(--color-text-main)]">Dias de Envio</h3>
             </div>
             <button
               onClick={selectAllDays}
-              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+              className="text-xs text-emerald-600 hover:text-emerald-700 font-bold hover:underline"
             >
-              {config.days.length === 7 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+              {config.days.length === 7 ? 'Nenhum' : 'Todos'}
             </button>
           </div>
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-7 gap-2">
             {ALL_DAYS.map(day => (
               <button
                 key={day.key}
                 onClick={() => toggleDay(day.key)}
-                className={`py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${config.days.includes(day.key)
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-[var(--color-text-muted)] hover:bg-slate-200 dark:hover:bg-slate-700'
+                className={`flex flex-col items-center justify-center py-3 rounded-xl text-xs font-bold transition-all border-2 ${config.days.includes(day.key)
+                  ? 'bg-emerald-500 text-white border-emerald-400 shadow-md shadow-emerald-100 dark:shadow-none'
+                  : 'bg-slate-50 dark:bg-slate-800 text-[var(--color-text-muted)] border-transparent hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
-                <span className="hidden sm:inline">{day.short}</span>
-                <span className="sm:hidden">{day.short.slice(0, 1)}</span>
+                <span>{day.short}</span>
               </button>
             ))}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-3 text-center">
-            {config.days.length === 7 ? '📅 Todos os dias' : config.days.length === 0 ? '⚠️ Nenhum dia selecionado' : `${config.days.length} dia${config.days.length > 1 ? 's' : ''} selecionado${config.days.length > 1 ? 's' : ''}`}
+          <p className="text-xs text-[var(--color-text-muted)] mt-4 font-medium text-center">
+            {config.days.length === 7 ? '📅 Todos os dias' : config.days.length === 0 ? '⚠️ Selecione ao menos um dia' : `${config.days.length} dia(s) selecionado(s)`}
           </p>
         </div>
 
         {/* Time Window */}
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-5">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-5">
             <Clock size={18} className="text-emerald-500" />
             <h3 className="font-semibold text-[var(--color-text-main)]">Janela de Atividade</h3>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-4">
             <div className="flex-1">
-              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Início</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-1.5 ml-1">Início</label>
               <select
                 value={config.startHour}
                 onChange={(e) => setConfig(prev => ({ ...prev, startHour: e.target.value }))}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
+                className="w-full rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold appearance-none"
               >
                 {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
-            <span className="text-[var(--color-text-muted)] mt-5 font-bold">→</span>
+            <div className="hidden sm:flex items-center justify-center pt-6">
+              <span className="text-slate-400 font-bold">→</span>
+            </div>
             <div className="flex-1">
-              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Fim</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-1.5 ml-1">Fim</label>
               <select
                 value={config.endHour}
                 onChange={(e) => setConfig(prev => ({ ...prev, endHour: e.target.value }))}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
+                className="w-full rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold appearance-none"
               >
                 {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-3 text-center">
+          <p className="text-xs text-[var(--color-text-muted)] mt-5 font-medium text-center">
             {(() => {
               const [sH] = config.startHour.split(':').map(Number);
               const [eH] = config.endHour.split(':').map(Number);
               const hours = eH - sH;
-              return hours > 0 ? `⏱️ ${hours} horas de atividade` : '⚠️ Horário inválido';
+              return hours > 0 ? `⏱️ ${hours}h de funcionamento` : '⚠️ Horário expirado';
             })()}
           </p>
         </div>
       </div>
 
       {/* Frequency */}
-      <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-5">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-5">
           <Zap size={18} className="text-emerald-500" />
           <h3 className="font-semibold text-[var(--color-text-main)]">Frequência de Envio</h3>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-7 gap-2">
           {INTERVALS.map(interval => (
             <button
               key={interval.value}
               onClick={() => setConfig(prev => ({ ...prev, intervalMinutes: interval.value }))}
-              className={`py-2.5 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${config.intervalMinutes === interval.value
-                ? 'bg-emerald-500 text-white shadow-md ring-2 ring-emerald-300'
-                : 'bg-slate-100 dark:bg-slate-800 text-[var(--color-text-muted)] hover:bg-slate-200 dark:hover:bg-slate-700'
+              className={`py-3 px-1 rounded-xl text-xs font-bold transition-all border-2 ${config.intervalMinutes === interval.value
+                ? 'bg-emerald-500 text-white border-emerald-400 shadow-md shadow-emerald-100 dark:shadow-none'
+                : 'bg-slate-50 dark:bg-slate-800 text-[var(--color-text-muted)] border-transparent hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
             >
               {interval.label}
@@ -307,96 +306,49 @@ export const Schedule: React.FC = () => {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-4 text-center">
-          <div className="text-2xl font-bold text-emerald-600">{sendsPerDay}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">envios/dia</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 text-center transition-transform hover:scale-[1.02]">
+          <div className="text-3xl font-black text-emerald-600">{sendsPerDay}</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-text-muted)] mt-1">envios/dia</div>
         </div>
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{sendsPerWeek}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">envios/semana</div>
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 text-center transition-transform hover:scale-[1.02]">
+          <div className="text-3xl font-black text-blue-600">{sendsPerWeek}</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-text-muted)] mt-1">envios/semana</div>
         </div>
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600">{activeProducts}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">produtos ativos</div>
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 text-center transition-transform hover:scale-[1.02]">
+          <div className="text-3xl font-black text-purple-600">{activeProducts}</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-text-muted)] mt-1">ativos</div>
         </div>
-        <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] p-4 text-center">
-          <div className="text-2xl font-bold text-amber-600">{daysToComplete}</div>
-          <div className="text-xs text-[var(--color-text-muted)] mt-1">dias p/ rodar todos</div>
+        <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 text-center transition-transform hover:scale-[1.02]">
+          <div className="text-3xl font-black text-amber-600">{daysToComplete}</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-text-muted)] mt-1">dias p/ total</div>
         </div>
       </div>
 
       {/* Test Send Button */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg overflow-hidden">
-        <div className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl shadow-xl overflow-hidden group">
+        <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="text-white text-center sm:text-left">
-            <h3 className="font-bold text-lg flex items-center gap-2"><Send size={20} /> Enviar Teste Agora</h3>
-            <p className="text-blue-100 text-sm mt-1">Envia um produto aleatório para todos os destinos configurados</p>
+            <h3 className="font-bold text-xl flex items-center justify-center sm:justify-start gap-2">
+              <Send size={22} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              Enviar Teste Agora
+            </h3>
+            <p className="text-indigo-100 text-sm mt-1.5 max-w-sm">Valide sua configuração enviando um product aleatório imediatamente.</p>
           </div>
           <button
             onClick={handleTestSend}
             disabled={sendingTest}
-            className="bg-white text-blue-700 font-bold px-6 py-3 rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2 text-sm whitespace-nowrap"
+            className="bg-white text-indigo-700 font-extrabold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-base w-full sm:w-auto"
           >
-            {sendingTest ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            {sendingTest ? 'Enviando...' : '\u{1F680} Testar Agora!'}
+            {sendingTest ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+            {sendingTest ? 'Enviando...' : 'Testar Agora!'}
           </button>
         </div>
         {testResult && (
-          <div className={`px-5 py-3 text-sm font-medium ${testResult.ok ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+          <div className={`px-6 py-4 text-sm font-bold flex items-center gap-3 ${testResult.ok ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+            {testResult.ok ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             {testResult.message}
           </div>
-        )}
-      </div>
-
-      {/* Next Sends Preview */}
-      <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden">
-        <div className="p-4 border-b border-[var(--color-border)] flex items-center gap-2">
-          <Calendar size={18} className="text-emerald-500" />
-          <h3 className="font-semibold text-[var(--color-text-main)]">Próximos Envios</h3>
-          <span className="ml-auto text-xs text-[var(--color-text-muted)] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-            {nextSends.length > 0 ? `Próximos ${nextSends.length}` : 'Nenhum'}
-          </span>
-        </div>
-
-        {nextSends.length === 0 ? (
-          <div className="p-12 text-center">
-            <Package className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-[var(--color-text-main)]">Nenhum envio previsto</h3>
-            <p className="text-[var(--color-text-muted)]">
-              {!config.isActive ? 'Ative a automação e salve para ver os próximos envios.' : 'Adicione produtos e configure os dias.'}
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-[var(--color-border)] max-h-96 overflow-y-auto">
-            {nextSends.map((send, idx) => {
-              const isToday = send.time.toDateString() === new Date().toDateString();
-              return (
-                <li key={idx} className="p-3 flex items-center gap-3 hover:bg-[var(--color-bg-main)] transition-colors">
-                  <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden border border-[var(--color-border)] flex-shrink-0">
-                    {send.product.image ? (
-                      <img src={send.product.image} className="w-full h-full object-cover" />
-                    ) : (
-                      <Package size={18} className="text-slate-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{send.product.title}</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      {send.time.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isToday
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                    }`}>
-                    <Clock size={12} />
-                    {isToday ? 'Hoje' : send.time.toLocaleDateString('pt-BR', { weekday: 'short' })}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
         )}
       </div>
     </div>
