@@ -144,9 +144,6 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        const adminNumber = settings?.whatsappNumber?.replace(/\D/g, '');
-        const adminChatId = adminNumber ? `${adminNumber}@c.us` : null;
-
         let product: any;
         let shuffledIds = config.shuffled_product_ids || [];
         let currentIndex = config.last_shuffle_index || 0;
@@ -166,27 +163,16 @@ Deno.serve(async (req: Request) => {
         } else {
           // Check if cycle is already complete
           if (currentIndex >= shuffledIds.length) {
-            // Check if we should send a reminder (e.g. once every 12h if still in this state)
+            // Check if we should update last_sent_at even if complete (heartbeat)
             const lastSent = config.last_sent_at ? new Date(config.last_sent_at) : new Date(0);
             const hoursSinceLast = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
 
-            if (hoursSinceLast >= 12 && adminChatId) {
-              const alertMsg = "⚠️ *FlowMasterIA: Ciclo Shopee Finalizado!*\n\nTodos os produtos cadastrados já foram enviados em seus respectivos grupos. \n\nPara garantir que os envios não se repitam e manter o engajamento, por favor:\n1. Vá em *Produtos* e exclua os atuais.\n2. Faça uma *Nova Importação* via API Shopee.\n\nOs envios automáticos estão pausados até a atualização.";
-
-              await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: adminChatId, message: alertMsg })
-              });
-
+            if (hoursSinceLast >= 12) {
               await supabase.from('automation_config').update({
                 last_sent_at: now.toISOString()
               }).eq('id', config.id);
-
-              results.push({ user: config.user_id, status: 'cycle_alert_sent' });
-            } else {
-              results.push({ user: config.user_id, skipped: 'cycle_already_completed' });
             }
+            results.push({ user: config.user_id, skipped: 'cycle_already_completed' });
             continue;
           }
 
@@ -245,27 +231,7 @@ Deno.serve(async (req: Request) => {
         if (!isTest) {
           currentIndex++;
 
-          // Check if it was the last one
-          if (currentIndex >= shuffledIds.length && adminChatId) {
-            const completionMsg = "✅ *FlowMasterIA: Rodada Finalizada!*\n\nTodos os produtos Shopee salvos acabam de ser enviados. \n\n*Atenção:* Os envios serão pausados até que novos produtos sejam importados para garantir que não haja repetições.";
-
-            await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chatId: adminChatId, message: completionMsg })
-            });
-          }
-          // Warn when running low (5 items left)
-          else if (shuffledIds.length - currentIndex === 5 && adminChatId) {
-            const lowMsg = "⚠️ *FlowMasterIA: Produtos Acabando!*\n\nRestam apenas *5 produtos* Shopee para serem enviados neste ciclo. \n\nLembre-se de preparar uma nova importação em breve.";
-
-            await fetch(`${apiHost}/waInstance${instanceId}/sendMessage/${token}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chatId: adminChatId, message: lowMsg })
-            });
-          }
-
+          // Admin alerts removed to save Green API quota
           await supabase.from('automation_config').update({
             last_shuffle_index: currentIndex,
             shuffled_product_ids: shuffledIds,

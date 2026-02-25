@@ -11,9 +11,6 @@ export const Settings: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'general' | 'template'>('general');
 
-    // Test states
-    const [testLoading, setTestLoading] = useState(false);
-    const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
@@ -30,19 +27,8 @@ export const Settings: React.FC = () => {
         loadData();
     }, []);
 
-    const validateWhatsApp = (num: string) => {
-        const cleaned = num.replace(/\D/g, '');
-        return cleaned.length >= 10 && cleaned.length <= 15;
-    };
-
     const handleSave = async () => {
         if (!settings) return;
-
-        if (settings.whatsappNumber && !validateWhatsApp(settings.whatsappNumber)) {
-            setErrorMsg('O número de WhatsApp parece estar incompleto ou no formato errado.');
-            setActiveTab('general');
-            return;
-        }
 
         setErrorMsg(null);
         setSaving(true);
@@ -53,55 +39,6 @@ export const Settings: React.FC = () => {
             setErrorMsg('Erro ao salvar: ' + e.message);
         } finally {
             setSaving(false);
-        }
-    };
-
-    const handleTestWhatsApp = async () => {
-        if (!settings?.whatsappNumber) {
-            setErrorMsg('Preencha seu número de WhatsApp primeiro.');
-            return;
-        }
-
-        if (!validateWhatsApp(settings.whatsappNumber)) {
-            setErrorMsg('Formato inválido. Use DDI + DDD + Número (ex: 5511999998888).');
-            return;
-        }
-
-        setTestLoading(true);
-        setTestStatus('idle');
-        setErrorMsg(null);
-
-        try {
-            const whatsappInt = settings.integrations?.find(i => i.id === 'whatsapp');
-            if (!whatsappInt?.isEnabled || !whatsappInt?.credentials?.instanceId) {
-                throw new Error('Certifique-se que a integração WhatsApp está ativada e configurada em "Integrações".');
-            }
-
-            const { instanceId, token, baseUrl } = whatsappInt.credentials;
-            const res = await supabase.functions.invoke('send-whatsapp', {
-                body: {
-                    directTest: {
-                        instanceId,
-                        token,
-                        baseUrl,
-                        chatId: settings.whatsappNumber.replace(/\D/g, '') + '@c.us',
-                        message: '✅ *FlowMasterIA: Mensagem de Teste Administrativa!*\n\nEste número foi configurado para receber alertas privados sobre ciclos de produtos e avisos de estoque.\n\n_Se você recebeu esta mensagem, significa que seu contato está configurado corretamente._'
-                    }
-                }
-            });
-
-            if (res.data?.success) {
-                setTestStatus('success');
-                setTimeout(() => setTestStatus('idle'), 5000);
-            } else {
-                throw new Error(res.data?.error || 'A API Green API retornou um erro.');
-            }
-        } catch (e: any) {
-            console.error('Test error:', e);
-            setErrorMsg(e.message);
-            setTestStatus('error');
-        } finally {
-            setTestLoading(false);
         }
     };
 
@@ -158,43 +95,6 @@ export const Settings: React.FC = () => {
                                     <input type="email" value={userEmail} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none text-slate-400 text-sm italic" />
                                 </div>
 
-                                <div className="md:col-span-2 pt-4 border-t border-slate-100 mt-2">
-                                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                                        <div className="flex-1 space-y-2">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Smartphone size={16} className="text-slate-600" />
-                                                <label className="block text-sm font-bold text-slate-700">WhatsApp para Notificações (Privado)</label>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                placeholder="Ex: 5511999998888"
-                                                value={settings.whatsappNumber || ''}
-                                                onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
-                                                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900 transition-all text-sm font-medium"
-                                            />
-                                            <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
-                                                <Smartphone size={12} /> Digite DDI + DDD + Número. Este número receberá avisos administrativos.
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={handleTestWhatsApp}
-                                            disabled={testLoading}
-                                            className={`h-[46px] px-6 rounded-xl text-sm font-bold transition-all border flex items-center gap-2 whitespace-nowrap min-w-[170px] justify-center
-                                                ${testStatus === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-300' :
-                                                    testStatus === 'error' ? 'bg-red-50 text-red-600 border-red-300' :
-                                                        'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 shadow-sm active:scale-95'}
-                                            `}
-                                        >
-                                            {testLoading ? <Loader2 size={16} className="animate-spin" /> :
-                                                testStatus === 'success' ? <CheckCircle2 size={16} /> :
-                                                    testStatus === 'error' ? <AlertTriangle size={16} /> :
-                                                        <Check size={16} />}
-                                            {testLoading ? 'Enviando...' :
-                                                testStatus === 'success' ? 'Teste Enviado!' :
-                                                    testStatus === 'error' ? 'Falha no Teste' : 'Testar Conexão'}
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
 
                             <div className="flex items-center justify-between py-6 border-t border-slate-100">

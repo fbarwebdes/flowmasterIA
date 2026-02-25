@@ -4,7 +4,8 @@ import { getNextSends } from '../services/automationService';
 import { DashboardStats, Product, DispatchRecord, AutomationConfig } from '../types';
 import {
   Package, Send, Loader2, TrendingUp, CheckCircle2, XCircle,
-  Activity, Zap, ArrowUpRight, Clock, MessageCircle, Calendar
+  Activity, Zap, ArrowUpRight, Clock, MessageCircle, Calendar,
+  AlertTriangle
 } from 'lucide-react';
 
 // ── Stat Card ──
@@ -101,6 +102,37 @@ export const Dashboard: React.FC = () => {
         <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Dashboard</h1>
         <p className="text-[var(--color-text-muted)] mt-1 text-sm">Visão geral do FlowMasterIA</p>
       </div>
+
+      {automationConfig?.shuffledProductIds && automationConfig.shuffledProductIds.length > 0 && (() => {
+        const total = automationConfig.shuffledProductIds.length;
+        const current = automationConfig.lastShuffleIndex || 0;
+        const remaining = total - current;
+
+        if (current >= total) {
+          return (
+            <div className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 border p-4 sm:p-5 rounded-2xl flex gap-4 items-start animate-fade-in">
+              <AlertTriangle className="text-red-500 mt-0.5" size={20} />
+              <div className="flex-1">
+                <h3 className="text-red-800 dark:text-red-400 font-bold text-sm sm:text-base">Atenção: Ciclo de Envios Finalizado!</h3>
+                <p className="text-red-700 dark:text-red-300 text-xs sm:text-sm mt-1">Todos os produtos cadastrados já foram enviados em seus respectivos grupos. Para que a automação continue sem repetições, vá até a aba de Produtos, <b>exclua os atuais e faça uma nova importação</b>.</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (remaining <= 5) {
+          return (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 border p-4 sm:p-5 rounded-2xl flex gap-4 items-start animate-fade-in">
+              <AlertTriangle className="text-amber-500 mt-0.5" size={20} />
+              <div className="flex-1">
+                <h3 className="text-amber-800 dark:text-amber-400 font-bold text-sm sm:text-base">Aviso: Produtos Acabando</h3>
+                <p className="text-amber-700 dark:text-amber-300 text-xs sm:text-sm mt-1">Restam apenas <b>{remaining} produtos</b> para serem enviados neste ciclo. Prepare uma nova importação em breve para manter os clientes engajados.</p>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
