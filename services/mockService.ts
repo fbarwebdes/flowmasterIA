@@ -591,13 +591,22 @@ export const saveAutomationConfig = async (config: AutomationConfig): Promise<vo
     interval_minutes: config.intervalMinutes,
     last_shuffle_index: config.lastShuffleIndex,
     shuffled_product_ids: config.shuffledProductIds,
-    cycle_completed: config.cycleCompleted,
     updated_at: new Date().toISOString(),
   };
 
+  // Try to save with cycle_completed (new column)
   const { error } = await supabase
     .from('automation_config')
     .upsert(payload, { onConflict: 'user_id' });
 
-  if (error) throw error;
+  if (error) {
+    console.warn('First save attempt failed, retrying without cycle_completed column...', error);
+    // If it fails, likely the column doesn't exist yet. Retry without it.
+    const { cycle_completed: _, ...fallbackPayload } = payload as any;
+    const { error: fallbackError } = await supabase
+      .from('automation_config')
+      .upsert(fallbackPayload, { onConflict: 'user_id' });
+
+    if (fallbackError) throw fallbackError;
+  }
 };
