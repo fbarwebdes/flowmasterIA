@@ -198,10 +198,15 @@ Deno.serve(async (req: Request) => {
                 // Build a clean raw URL for this product to convert via generateShortLink
                 const rawProductUrl = `https://shopee.com.br/product/${product.shopId}/${product.itemId}`;
 
-                // Robust price extraction: use price, then priceMin, then priceMax.
-                // Divide by 100000 for Shopee API normalization.
+                // Scale-Aware price extraction:
+                // Shopee API often returns prices multiplied by 100,000 (e.g. 10.50 -> 1050000).
+                // However, sometimes it returns decimals. We check the magnitude.
                 let rawPrice = product.price || product.priceMin || product.priceMax || 0;
-                let finalPrice = rawPrice / 100000;
+                let finalPrice = rawPrice;
+
+                if (rawPrice > 1000) {
+                    finalPrice = rawPrice / 100000;
+                }
 
                 return {
                     item_id: product.itemId,

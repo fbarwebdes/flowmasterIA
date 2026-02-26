@@ -91,9 +91,14 @@ Deno.serve(async (req: Request) => {
                     const node = resJson.data?.productOfferV2?.nodes?.[0];
                     if (node) {
                         apiTitle = node.productName;
-                        // Robust price extraction
-                        const rawPrice = node.price || node.priceMin || node.priceMax || 0;
-                        apiPrice = String(rawPrice / 100000);
+                        // Scale-Aware price extraction:
+                        // Shopee API often returns prices multiplied by 100,000 (e.g. 10.50 -> 1050000).
+                        let rawPrice = node.price || node.priceMin || node.priceMax || 0;
+                        let finalPrice = Number(rawPrice);
+                        if (finalPrice > 1000) {
+                            finalPrice = finalPrice / 100000;
+                        }
+                        apiPrice = String(finalPrice);
                         apiImage = node.imageUrl;
                         console.log(`Shopee API Hit: price=${apiPrice}`);
 
@@ -184,12 +189,16 @@ Deno.serve(async (req: Request) => {
 
         // Enhanced Shopee/Generic fallback: detect the SMALLEST price in the page if range exists
         if (!price || price === '0' || price === '0.00') {
-            const priceRegex = /R\$\s?([\d.]+,\d{2})/gi;
+            const priceRegex = /R\$\s?([\d.]+,\d{1,2})/gi;
             const matches = [...html.matchAll(priceRegex)];
             if (matches.length > 0) {
                 // Convert all to numbers and pick the minimum
-                const prices = matches.map(m => parseFloat(m[1].replace(/\./g, '').replace(',', '.')));
-                price = String(Math.min(...prices));
+                const prices = matches.map(m => {
+                    const cleaned = m[1].replace(/\./g, '').replace(',', '.');
+                    return parseFloat(cleaned);
+                });
+                const minPrice = Math.min(...prices.filter(p => !isNaN(p) && p > 0));
+                if (minPrice !== Infinity) price = String(minPrice);
             }
         }
 
