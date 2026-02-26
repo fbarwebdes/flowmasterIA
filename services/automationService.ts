@@ -71,8 +71,19 @@ export const getNextSends = (config: AutomationConfig, products: Product[], limi
     }
 
     while (curMin < endMin && sends.length < limit) {
-      const product = getProduct(prodIdx);
-      if (!product) break; // Finished cycle or no products
+      let product = getProduct(prodIdx);
+
+      // Smart Recovery: Skip missing products in strict cycle
+      if (isStrictCycle && !product) {
+        let skipCount = 0;
+        while (!product && prodIdx < shuffledIds.length && skipCount < 50) {
+          prodIdx++;
+          skipCount++;
+          product = getProduct(prodIdx);
+        }
+      }
+
+      if (!product) break; // Reached end of cycle or no products available
 
       const sendTime = new Date(checkDate);
       sendTime.setHours(Math.floor(curMin / 60), curMin % 60, 0, 0);

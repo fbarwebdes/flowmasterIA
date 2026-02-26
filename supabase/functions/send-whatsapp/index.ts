@@ -176,13 +176,21 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
+          // --- Smart Recovery: Skip missing products ---
+          let skipCount = 0;
+          while (!product && currentIndex < shuffledIds.length && skipCount < 50) {
+            product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
+            if (!product) {
+              console.log(`Product ID ${shuffledIds[currentIndex]} not found, skipping...`);
+              currentIndex++;
+              skipCount++;
+            }
+          }
 
-          // If the product was deleted in the meantime, skip it
           if (!product) {
-            currentIndex++;
+            // Cycle complete or no reachable products
             await supabase.from('automation_config').update({ last_shuffle_index: currentIndex }).eq('id', config.id);
-            results.push({ user: config.user_id, skipped: 'product_not_found' });
+            results.push({ user: config.user_id, skipped: 'cycle_exhausted_or_all_products_missing' });
             continue;
           }
         }

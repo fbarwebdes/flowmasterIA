@@ -24,7 +24,7 @@ interface ShopeeCredentials {
   appSecret: string;
 }
 
-import { fetchSettings } from './mockService';
+import { fetchSettings, fetchAutomationConfig, saveAutomationConfig } from './mockService';
 
 // Fetch credentials from DB settings
 export const getShopeeCredentials = async (): Promise<ShopeeCredentials | null> => {
@@ -173,6 +173,23 @@ export const importShopeeProducts = async (products: ShopeeProduct[]): Promise<n
       imported++;
     } catch (e) {
       console.error('Failed to import:', product.item_name);
+    }
+  }
+
+  if (imported > 0) {
+    // Reset automation cycle to ensure new products are picked up immediately
+    try {
+      const config = await fetchAutomationConfig();
+      if (config) {
+        await saveAutomationConfig({
+          ...config,
+          lastShuffleIndex: 0,
+          shuffledProductIds: [] // Force a reshuffle on next run
+        });
+        console.log('Automation cycle reset after bulk import.');
+      }
+    } catch (e) {
+      console.warn('Could not reset automation cycle:', e);
     }
   }
 
