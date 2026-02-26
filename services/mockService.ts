@@ -52,6 +52,9 @@ export const saveProduct = async (product: Omit<Product, 'id'>): Promise<Product
     throw new Error('Falha ao salvar produto');
   }
 
+  // Reset cycle_completed when a new product is added
+  await supabase.from('automation_config').update({ cycle_completed: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+
   return {
     id: data.id,
     title: data.title,
@@ -98,6 +101,9 @@ export const deleteProduct = async (productId: string): Promise<void> => {
     console.error('Error deleting product:', error);
     throw new Error('Falha ao excluir produto');
   }
+
+  // Reset cycle_completed when a product is deleted
+  await supabase.from('automation_config').update({ cycle_completed: false }).neq('id', '00000000-0000-0000-0000-000000000000');
 };
 
 // Delete all products by platform (or all if no platform specified)
@@ -117,6 +123,9 @@ export const deleteAllProducts = async (platform?: string): Promise<number> => {
     console.error('Error deleting all products:', error);
     throw new Error('Falha ao excluir produtos');
   }
+
+  // Reset cycle_completed when products are deleted
+  await supabase.from('automation_config').update({ cycle_completed: false }).neq('id', '00000000-0000-0000-0000-000000000000');
 
   return count || 0;
 };
@@ -528,6 +537,9 @@ export const importProductsFromIntegration = async (integrationId: string): Prom
   if (integrationId === 'shopee') {
     const shopeeProducts = await fetchShopeeProducts();
     const imported = await importShopeeProducts(shopeeProducts);
+    if (imported > 0) {
+      await supabase.from('automation_config').update({ cycle_completed: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+    }
     return imported;
   }
 
@@ -562,6 +574,7 @@ export const fetchAutomationConfig = async (): Promise<AutomationConfig | null> 
     lastShuffleIndex: data.last_shuffle_index || 0,
     shuffledProductIds: data.shuffled_product_ids || [],
     lastSentAt: data.last_sent_at,
+    cycleCompleted: data.cycle_completed || false,
   };
 };
 
@@ -578,6 +591,7 @@ export const saveAutomationConfig = async (config: AutomationConfig): Promise<vo
     interval_minutes: config.intervalMinutes,
     last_shuffle_index: config.lastShuffleIndex,
     shuffled_product_ids: config.shuffledProductIds,
+    cycle_completed: config.cycleCompleted,
     updated_at: new Date().toISOString(),
   };
 

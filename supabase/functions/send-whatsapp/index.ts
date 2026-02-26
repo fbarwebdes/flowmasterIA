@@ -19,6 +19,40 @@ function shuffleArray<T>(arr: T[]): T[] {
   return shuffled;
 }
 
+function interleaveProducts(products: any[]): string[] {
+  if (products.length === 0) return [];
+
+  // Group by platform
+  const groups: Record<string, string[]> = {};
+  products.forEach(p => {
+    const platform = p.platform || 'Other';
+    if (!groups[platform]) groups[platform] = [];
+    groups[platform].push(p.id);
+  });
+
+  // Shuffle each group's IDs
+  Object.keys(groups).forEach(platform => {
+    groups[platform] = shuffleArray(groups[platform]);
+  });
+
+  const interleaved: string[] = [];
+  const platforms = Object.keys(groups);
+  let hasMore = true;
+
+  while (hasMore) {
+    hasMore = false;
+    // We can shuffle the platforms list for each round to add more variety
+    const shuffledPlatforms = shuffleArray(platforms);
+    for (const platform of shuffledPlatforms) {
+      if (groups[platform].length > 0) {
+        interleaved.push(groups[platform].shift()!);
+        hasMore = true;
+      }
+    }
+  }
+  return interleaved;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -47,7 +81,6 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiHost = baseUrl ? baseUrl.replace(/\/$/, '') : `https://api.green-api.com`;
-      const greenApiUrl = `${apiHost}/waInstance${instanceId}/sendMessage/${token}`;
       console.log(`Calling Green API: ${greenApiUrl}`);
 
       try {
@@ -148,9 +181,9 @@ Deno.serve(async (req: Request) => {
         let shuffledIds = config.shuffled_product_ids || [];
         let currentIndex = config.last_shuffle_index || 0;
 
-        // If no shuffle list yet, create it
+        // If no shuffle list yet or list is empty, create it interleaved
         if (shuffledIds.length === 0) {
-          shuffledIds = shuffleArray(allProducts.map((p: any) => p.id));
+          shuffledIds = interleaveProducts(allProducts);
           currentIndex = 0;
           await supabase.from('automation_config').update({
             shuffled_product_ids: shuffledIds,
@@ -161,19 +194,20 @@ Deno.serve(async (req: Request) => {
         if (isTest) {
           product = allProducts[Math.floor(Math.random() * allProducts.length)];
         } else {
-          // Check if cycle is already complete
+          // Check if cycle is complete
           if (currentIndex >= shuffledIds.length) {
-            // Check if we should update last_sent_at even if complete (heartbeat)
-            const lastSent = config.last_sent_at ? new Date(config.last_sent_at) : new Date(0);
-            const hoursSinceLast = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+            console.log("Cycle complete, resetting index and shuffling again...");
 
-            if (hoursSinceLast >= 12) {
-              await supabase.from('automation_config').update({
-                last_sent_at: now.toISOString()
-              }).eq('id', config.id);
-            }
-            results.push({ user: config.user_id, skipped: 'cycle_already_completed' });
-            continue;
+            // Mark as cycle completed for the persistent notification
+            // Then reset index and reshuffle to repeat
+            shuffledIds = interleaveProducts(allProducts);
+            currentIndex = 0;
+
+            await supabase.from('automation_config').update({
+              cycle_completed: true,
+              last_shuffle_index: 0,
+              shuffled_product_ids: shuffledIds
+            }).eq('id', config.id);
           }
 
           // --- Smart Recovery: Skip missing products ---
@@ -188,15 +222,15 @@ Deno.serve(async (req: Request) => {
           }
 
           if (!product) {
-            // Cycle complete or all remaining products missing.
-            // Reset to 0 and shuffle again or just rotation.
-            console.log("Cycle exhausted, resetting to 0...");
+            // Emergency fallback if all items in shuffled list are gone
+            console.log("All current IDs invalid, hard reset...");
+            shuffledIds = interleaveProducts(allProducts);
             currentIndex = 0;
             product = allProducts[0]; // Emergency fallback 
 
             await supabase.from('automation_config').update({
               last_shuffle_index: 0,
-              shuffled_product_ids: shuffleArray(allProducts.map((p: any) => p.id))
+              shuffled_product_ids: shuffledIds
             }).eq('id', config.id);
 
             if (!product) {
@@ -253,7 +287,7 @@ Deno.serve(async (req: Request) => {
           // Admin alerts removed to save Green API quota
           await supabase.from('automation_config').update({
             last_shuffle_index: currentIndex,
-            shuffled_product_ids: shuffledIds,
+            cycle_completed: false, // Reset cycle completion status
             last_sent_at: now.toISOString()
           }).eq('id', config.id);
         }

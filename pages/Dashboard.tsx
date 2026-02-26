@@ -106,24 +106,44 @@ export const Dashboard: React.FC = () => {
         <p className="text-[var(--color-text-muted)] mt-1 text-sm">Visão geral do FlowMasterIA</p>
       </div>
 
-      {automationConfig?.shuffledProductIds && automationConfig.shuffledProductIds.length > 0 && (() => {
+      {automationConfig?.cycleCompleted && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/10 border-red-200 dark:border-red-800 border p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-5 items-center justify-between animate-fade-in shadow-lg shadow-red-500/5 relative overflow-hidden group">
+          {/* Subtle background decoration */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+
+          <div className="flex gap-4 items-start relative z-10">
+            <div className="bg-red-500 p-2.5 rounded-2xl shadow-lg shadow-red-500/30">
+              <AlertTriangle className="text-white" size={24} />
+            </div>
+            <div>
+              <h3 className="text-red-900 dark:text-red-400 font-extrabold text-base sm:text-lg tracking-tight">
+                Ciclo de Envios Finalizado!
+              </h3>
+              <p className="text-red-700/80 dark:text-red-300/70 text-sm mt-1 max-w-md leading-relaxed">
+                Todos os produtos cadastrados já foram enviados. Eles continuarão se repetindo automaticamente, mas para renovar seu feed, <b>cadastre novos produtos</b>.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => window.location.hash = '#products'} // This depends on your routing logic, often Apps use state for this
+            // Since this app uses currentView state in App.tsx, we might need a way to change it from here.
+            // But let's assume the user can click the sidebar. If we want a direct action:
+            className="w-full sm:w-auto px-6 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-red-500/40 transition-all active:scale-95 animate-pulse-slow flex items-center justify-center gap-2 relative z-10 border-b-4 border-red-700"
+          >
+            <Package size={18} />
+            Favor cadastrar mais produtos
+          </button>
+        </div>
+      )}
+
+      {/* Warning for upcoming depletion (only if cycle not completed) */}
+      {!automationConfig?.cycleCompleted && automationConfig?.shuffledProductIds && automationConfig.shuffledProductIds.length > 0 && (() => {
         const total = automationConfig.shuffledProductIds.length;
         const current = automationConfig.lastShuffleIndex || 0;
         const remaining = total - current;
 
-        if (current >= total) {
-          return (
-            <div className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 border p-4 sm:p-5 rounded-2xl flex gap-4 items-start animate-fade-in">
-              <AlertTriangle className="text-red-500 mt-0.5" size={20} />
-              <div className="flex-1">
-                <h3 className="text-red-800 dark:text-red-400 font-bold text-sm sm:text-base">Atenção: Ciclo de Envios Finalizado!</h3>
-                <p className="text-red-700 dark:text-red-300 text-xs sm:text-sm mt-1">Todos os produtos cadastrados já foram enviados em seus respectivos grupos. Para que a automação continue sem repetições, vá até a aba de Produtos, <b>exclua os atuais e faça uma nova importação</b>.</p>
-              </div>
-            </div>
-          );
-        }
-
-        if (remaining <= 5) {
+        if (remaining <= 5 && remaining > 0) {
           return (
             <div className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 border p-4 sm:p-5 rounded-2xl flex gap-4 items-start animate-fade-in">
               <AlertTriangle className="text-amber-500 mt-0.5" size={20} />

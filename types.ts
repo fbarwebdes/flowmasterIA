@@ -93,4 +93,5 @@ export interface AutomationConfig {
   lastShuffleIndex: number;
   shuffledProductIds: string[];
   lastSentAt?: string;
+  cycleCompleted?: boolean;
 }
