@@ -188,10 +188,21 @@ Deno.serve(async (req: Request) => {
           }
 
           if (!product) {
-            // Cycle complete or no reachable products
-            await supabase.from('automation_config').update({ last_shuffle_index: currentIndex }).eq('id', config.id);
-            results.push({ user: config.user_id, skipped: 'cycle_exhausted_or_all_products_missing' });
-            continue;
+            // Cycle complete or all remaining products missing.
+            // Reset to 0 and shuffle again or just rotation.
+            console.log("Cycle exhausted, resetting to 0...");
+            currentIndex = 0;
+            product = allProducts[0]; // Emergency fallback 
+
+            await supabase.from('automation_config').update({
+              last_shuffle_index: 0,
+              shuffled_product_ids: shuffleArray(allProducts.map((p: any) => p.id))
+            }).eq('id', config.id);
+
+            if (!product) {
+              results.push({ user: config.user_id, skipped: 'no_active_products_found_after_reset' });
+              continue;
+            }
           }
         }
 

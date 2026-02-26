@@ -39,13 +39,16 @@ export const getNextSends = (config: AutomationConfig, products: Product[], limi
   if (isStrictCycle && currentIndex >= shuffledIds.length) return [];
 
   const getProduct = (idx: number) => {
-    if (isStrictCycle) {
-      if (idx >= shuffledIds.length) return null;
-      const id = shuffledIds[idx];
-      return products.find(p => p.id === id && p.active);
-    }
     const activeProds = products.filter(p => p.active);
     if (activeProds.length === 0) return null;
+
+    if (isStrictCycle && idx < shuffledIds.length) {
+      const id = shuffledIds[idx];
+      const p = activeProds.find(p => p.id === id);
+      if (p) return p;
+    }
+
+    // Fallback to rotation if strict cycle ends or product is missing
     return activeProds[idx % activeProds.length];
   };
 
@@ -92,8 +95,6 @@ export const getNextSends = (config: AutomationConfig, products: Product[], limi
       prodIdx++;
       curMin += config.intervalMinutes;
     }
-
-    if (isStrictCycle && prodIdx >= shuffledIds.length) break;
   }
   return sends;
 };

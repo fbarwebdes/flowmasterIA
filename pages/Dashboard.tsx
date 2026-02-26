@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { fetchStats, fetchProducts, fetchRecentDispatches, fetchAutomationConfig } from '../services/mockService';
+import { fetchStats, fetchProducts, fetchRecentDispatches, fetchAutomationConfig, fetchSchedules } from '../services/mockService';
 import { getNextSends } from '../services/automationService';
-import { DashboardStats, Product, DispatchRecord, AutomationConfig } from '../types';
+import { DashboardStats, Product, DispatchRecord, AutomationConfig, Schedule } from '../types';
 import {
   Package, Send, Loader2, TrendingUp, CheckCircle2, XCircle,
   Activity, Zap, ArrowUpRight, Clock, MessageCircle, Calendar,
@@ -38,21 +38,24 @@ export const Dashboard: React.FC = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [dispatches, setDispatches] = useState<DispatchRecord[]>([]);
   const [automationConfig, setAutomationConfig] = useState<AutomationConfig | null>(null);
+  const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsData, prods, dispatchData, autoConfig] = await Promise.all([
+        const [statsData, prods, dispatchData, autoConfig, scheduleData] = await Promise.all([
           fetchStats(),
           fetchProducts(),
           fetchRecentDispatches(10),
-          fetchAutomationConfig()
+          fetchAutomationConfig(),
+          fetchSchedules()
         ]);
         setStats(statsData);
         setAllProducts(prods);
         setDispatches(dispatchData);
         setAutomationConfig(autoConfig);
+        setAllSchedules(scheduleData);
       } catch (e) {
         console.error('Dashboard load error:', e);
       } finally {
@@ -292,9 +295,29 @@ export const Dashboard: React.FC = () => {
                 </div>
               );
 
-              const nextSends = getNextSends(automationConfig, allProducts, 15);
+              const nextAutoSends = getNextSends(automationConfig, allProducts, 15);
+              const now = new Date();
 
-              if (nextSends.length === 0) {
+              // Get future manual schedules
+              const futureManualSends = allSchedules
+                .filter(s => s.status === 'pending' && new Date(s.scheduledTime) > now)
+                .map(s => {
+                  const product = allProducts.find(p => p.id === s.productId);
+                  return {
+                    time: new Date(s.scheduledTime),
+                    product: product || { title: s.productTitle, image: s.productImage, platform: s.platform } as any,
+                    isManual: true
+                  };
+                });
+
+              // Merge and sort
+              const unifiedSends = [
+                ...nextAutoSends.map(s => ({ ...s, isManual: false })),
+                ...futureManualSends
+              ].sort((a, b) => a.time.getTime() - b.time.getTime())
+                .slice(0, 15);
+
+              if (unifiedSends.length === 0) {
                 return (
                   <div className="p-8 text-center text-[var(--color-text-muted)]">
                     <Package className="mx-auto mb-3 text-slate-300" size={36} />
@@ -304,7 +327,7 @@ export const Dashboard: React.FC = () => {
                 );
               }
 
-              return nextSends.map((send, idx) => {
+              return unifiedSends.map((send, idx) => {
                 const isToday = send.time.toDateString() === new Date().toDateString();
                 return (
                   <div key={idx} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-[var(--color-bg-main)] transition-colors">
@@ -315,15 +338,27 @@ export const Dashboard: React.FC = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{send.product.title}</p>
-                      <p className="text-[10px] text-[var(--color-text-muted)]">
-                        {send.time.toLocaleString('pt-BR', {
-                          weekday: 'short',
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-[var(--color-text-muted)]">
+                          {send.time.toLocaleString('pt-BR', {
+                            weekday: 'short',
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                        {send.isManual && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 text-[8px] font-bold uppercase tracking-wider">
+                            Manual
+                          </span>
+                        )}
+                        {!send.isManual && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[8px] font-bold uppercase tracking-wider">
+                            Auto
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${isToday
                       ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
