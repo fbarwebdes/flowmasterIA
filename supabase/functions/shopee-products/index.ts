@@ -201,10 +201,11 @@ Deno.serve(async (req: Request) => {
                 // Scale-Aware price extraction:
                 // Shopee API often returns prices multiplied by 100,000 (e.g. 10.50 -> 1050000).
                 // However, sometimes it returns decimals. We check the magnitude.
+                // We use 30000 as threshold to allow high-value items (like R$ 9k scooters) to stay unscaled.
                 let rawPrice = product.price || product.priceMin || product.priceMax || 0;
                 let finalPrice = rawPrice;
 
-                if (rawPrice > 1000) {
+                if (rawPrice > 30000) {
                     finalPrice = rawPrice / 100000;
                 }
 

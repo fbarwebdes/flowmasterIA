@@ -95,7 +95,8 @@ Deno.serve(async (req: Request) => {
                         // Shopee API often returns prices multiplied by 100,000 (e.g. 10.50 -> 1050000).
                         let rawPrice = node.price || node.priceMin || node.priceMax || 0;
                         let finalPrice = Number(rawPrice);
-                        if (finalPrice > 1000) {
+                        // Raise threshold to 30000 to allow high-value items (R$ 9k+)
+                        if (finalPrice > 30000) {
                             finalPrice = finalPrice / 100000;
                         }
                         apiPrice = String(finalPrice);
