@@ -47,6 +47,7 @@ function getProductOfferListQuery(keyword: string, limit: number) {
             shopId
             commissionRate
             productName
+            price
             priceMin
             priceMax
             sales
@@ -193,15 +194,20 @@ Deno.serve(async (req: Request) => {
             const shopeeProducts: ShopeeProduct[] = productResponse.data.productOfferV2.nodes;
 
             // Step 1: Build raw product list with direct URLs as fallback
-            const productsWithRawLinks = shopeeProducts.map((product: ShopeeProduct) => {
+            const productsWithRawLinks = shopeeProducts.map((product: any) => {
                 // Build a clean raw URL for this product to convert via generateShortLink
                 const rawProductUrl = `https://shopee.com.br/product/${product.shopId}/${product.itemId}`;
+
+                // Robust price extraction: use price, then priceMin, then priceMax.
+                // Divide by 100000 for Shopee API normalization.
+                let rawPrice = product.price || product.priceMin || product.priceMax || 0;
+                let finalPrice = rawPrice / 100000;
 
                 return {
                     item_id: product.itemId,
                     shop_id: product.shopId,
                     item_name: product.productName,
-                    item_price: product.priceMin / 100000,
+                    item_price: finalPrice,
                     item_image: product.imageUrl,
                     product_link: rawProductUrl, // Will be replaced by short link
                     shop_name: product.shopName,

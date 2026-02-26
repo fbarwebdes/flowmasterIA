@@ -16,6 +16,38 @@ async function generateSignature(appId: string, timestamp: number, payload: stri
     return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Call Shopee Affiliate GraphQL API
+async function callShopeeGraphQL(appId: string, secret: string, payload: string) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = await generateSignature(appId, timestamp, payload, secret);
+
+    const response = await fetch("https://open-api.affiliate.shopee.com.br/graphql", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `SHA256 Credential=${appId},Timestamp=${timestamp},Signature=${signature}`,
+        },
+        body: payload,
+    });
+
+    return response.json();
+}
+
+// Convert a raw Shopee URL into a proper short affiliate link
+async function convertToShortLink(appId: string, secret: string, originUrl: string): Promise<string | null> {
+    try {
+        const payload = JSON.stringify({
+            query: `mutation GenerateShortLink($input: GenerateShortLinkInput!) { generateShortLink(input: $input) { shortLink } }`,
+            variables: { input: { originUrl } }
+        });
+        const result = await callShopeeGraphQL(appId, secret, payload);
+        return result?.data?.generateShortLink?.shortLink || null;
+    } catch (e) {
+        console.error('Error generating short link:', e);
+        return null;
+    }
+}
+
 Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -50,28 +82,28 @@ Deno.serve(async (req: Request) => {
                 const secret = shopeeConfig?.credentials?.apiKey;
 
                 if (appId && secret && shopeeConfig.isEnabled) {
-                    const payload = JSON.stringify({
-                        query: `query{productOfferV2(itemId:\"${shopeeIds.itemId}\",shopId:\"${shopeeIds.shopId}\"){nodes{productName,priceMin,imageUrl}}}`
-                    });
-                    const timestamp = Math.floor(Date.now() / 1000);
-                    const signature = await generateSignature(appId, timestamp, payload, secret);
-
-                    const apiRes = await fetch("https://open-api.affiliate.shopee.com.br/graphql", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `SHA256 Credential=${appId},Timestamp=${timestamp},Signature=${signature}`,
-                        },
-                        body: payload,
+                    // 1. Fetch metadata (price, title, image)
+                    const productPayload = JSON.stringify({
+                        query: `query { productOfferV2(itemId: \"${shopeeIds.itemId}\", shopId: \"${shopeeIds.shopId}\") { nodes { productName, price, priceMin, priceMax, imageUrl } } }`
                     });
 
-                    const resJson = await apiRes.json();
+                    const resJson = await callShopeeGraphQL(appId, secret, productPayload);
                     const node = resJson.data?.productOfferV2?.nodes?.[0];
                     if (node) {
                         apiTitle = node.productName;
-                        apiPrice = String(node.priceMin / 100000);
+                        // Robust price extraction
+                        const rawPrice = node.price || node.priceMin || node.priceMax || 0;
+                        apiPrice = String(rawPrice / 100000);
                         apiImage = node.imageUrl;
                         console.log(`Shopee API Hit: price=${apiPrice}`);
+
+                        // 2. Generate tracked short link
+                        const rawProductUrl = `https://shopee.com.br/product/${shopeeIds.shopId}/${shopeeIds.itemId}`;
+                        const shortLink = await convertToShortLink(appId, secret, rawProductUrl);
+                        if (shortLink) {
+                            finalUrl = shortLink;
+                            console.log(`Shopee Short Link Generated for Manual Import: ${shortLink}`);
+                        }
                     }
                 }
             } catch (apiErr) {
