@@ -287,7 +287,6 @@ Deno.serve(async (req: Request) => {
           // Admin alerts removed to save Green API quota
           await supabase.from('automation_config').update({
             last_shuffle_index: currentIndex,
-            cycle_completed: false, // Reset cycle completion status
             last_sent_at: now.toISOString()
           }).eq('id', config.id);
         }

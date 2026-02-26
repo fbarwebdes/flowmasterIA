@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Product, AppSettings } from '../types';
-import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule, extractFromLink, saveProduct } from '../services/mockService';
-import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3, Send } from 'lucide-react';
+import { Product, AppSettings, AutomationConfig } from '../types';
+import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule, extractFromLink, saveProduct, fetchAutomationConfig } from '../services/mockService';
+import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3, Send, AlertTriangle, Package } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [automationConfig, setAutomationConfig] = useState<AutomationConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
@@ -113,9 +114,10 @@ export const Products: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [prodData, settingsData] = await Promise.all([fetchProducts(), fetchSettings()]);
+    const [prodData, settingsData, configData] = await Promise.all([fetchProducts(), fetchSettings(), fetchAutomationConfig()]);
     setProducts(prodData);
     setSettings(settingsData);
+    setAutomationConfig(configData);
     setLoading(false);
   };
 
@@ -374,6 +376,25 @@ export const Products: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {automationConfig?.cycleCompleted && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/10 border-red-200 dark:border-red-800 border p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row gap-5 items-center justify-between animate-fade-in shadow-lg shadow-red-500/5 relative overflow-hidden group">
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+          <div className="flex gap-4 items-start relative z-10">
+            <div className="bg-red-500 p-2.5 rounded-2xl shadow-lg shadow-red-500/30">
+              <AlertTriangle className="text-white" size={24} />
+            </div>
+            <div>
+              <h3 className="text-red-900 dark:text-red-400 font-extrabold text-base sm:text-lg tracking-tight">
+                Ciclo de Envios Finalizado!
+              </h3>
+              <p className="text-red-700/80 dark:text-red-300/70 text-sm mt-1 max-w-md leading-relaxed">
+                Todos os produtos salvos já foram enviados. Eles continuarão se repetindo automaticamente, mas para renovar seu feed, cadastre ou importe novos produtos.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Platform Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-1 -mx-1 px-1">
