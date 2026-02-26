@@ -72,6 +72,25 @@ function getProductOfferListQuery(keyword: string, limit: number) {
     });
 }
 
+// GraphQL mutation to convert a raw Shopee URL into a tracked affiliate short link
+function getGenerateShortLinkMutation(originUrl: string, subId: string = '') {
+    return JSON.stringify({
+        query: `
+      mutation GenerateShortLink($input: GenerateShortLinkInput!) {
+        generateShortLink(input: $input) {
+          shortLink
+        }
+      }
+    `,
+        variables: {
+            input: {
+                originUrl: originUrl,
+                subId: subId
+            }
+        }
+    });
+}
+
 // Call Shopee Affiliate GraphQL API
 async function callShopeeGraphQL(
     appId: string,
@@ -93,30 +112,42 @@ async function callShopeeGraphQL(
     return response.json();
 }
 
-// Create direct product URL with affiliate ID
+// Create direct product URL with affiliate ID (fallback when short link generation fails)
 function createDirectProductUrl(
     productName: string,
     shopId: string | number,
     itemId: string | number,
     affiliateId: string
 ): string {
-    const slug = productName
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .substring(0, 80);
-
-    return `https://shopee.com.br/${slug}-i.${shopId}.${itemId}?af_id=${affiliateId}`;
+    return `https://shopee.com.br/product/${shopId}/${itemId}?af_id=${affiliateId}`;
 }
 
-// Create a high-quality Search Link for Fallback
-// This is used when API fails. It guarantees a valid destination page (search results)
-// sorted by sales to show best products first.
+// Create a search link as fallback for demo products
 function createReliableSearchLink(keyword: string, affiliateId: string): string {
     const encoded = encodeURIComponent(keyword);
     return `https://shopee.com.br/search?keyword=${encoded}&sortBy=sales&af_id=${affiliateId}`;
+}
+
+// Convert a raw Shopee URL into a proper short affiliate link
+async function convertToShortLink(
+    appId: string,
+    appSecret: string,
+    originUrl: string
+): Promise<string | null> {
+    try {
+        const payload = getGenerateShortLinkMutation(originUrl);
+        const result = await callShopeeGraphQL(appId, appSecret, payload);
+        const shortLink = result?.data?.generateShortLink?.shortLink;
+        if (shortLink) {
+            console.log(`Short link generated: ${originUrl} -> ${shortLink}`);
+            return shortLink;
+        }
+        console.warn('generateShortLink returned no shortLink:', JSON.stringify(result));
+        return null;
+    } catch (e) {
+        console.error('Error generating short link:', e);
+        return null;
+    }
 }
 
 interface ShopeeProduct {
@@ -161,24 +192,10 @@ Deno.serve(async (req: Request) => {
         if (productResponse.data?.productOfferV2?.nodes?.length > 0) {
             const shopeeProducts: ShopeeProduct[] = productResponse.data.productOfferV2.nodes;
 
-            const productsWithDirectLinks = shopeeProducts.map((product: ShopeeProduct) => {
-                let finalLink = product.productLink;
-
-                // If link is missing or looks like a search, try to construct direct link
-                // BUT prioritize the API's link if it looks valid
-                if (!finalLink || finalLink.includes("/search?")) {
-                    finalLink = createDirectProductUrl(
-                        product.productName,
-                        product.shopId,
-                        product.itemId,
-                        appId
-                    );
-                } else {
-                    const separator = finalLink.includes("?") ? "&" : "?";
-                    if (!finalLink.includes("af_id=")) {
-                        finalLink = `${finalLink}${separator}af_id=${appId}`;
-                    }
-                }
+            // Step 1: Build raw product list with direct URLs as fallback
+            const productsWithRawLinks = shopeeProducts.map((product: ShopeeProduct) => {
+                // Build a clean raw URL for this product to convert via generateShortLink
+                const rawProductUrl = `https://shopee.com.br/product/${product.shopId}/${product.itemId}`;
 
                 return {
                     item_id: product.itemId,
@@ -186,17 +203,33 @@ Deno.serve(async (req: Request) => {
                     item_name: product.productName,
                     item_price: product.priceMin / 100000,
                     item_image: product.imageUrl,
-                    product_link: finalLink,
+                    product_link: rawProductUrl, // Will be replaced by short link
                     shop_name: product.shopName,
                     commission_rate: product.commissionRate,
                     sales: product.sales,
                 };
             });
 
+            // Step 2: Convert all URLs to tracked short links via generateShortLink
+            console.log(`Converting ${productsWithRawLinks.length} product links to short affiliate links...`);
+            const shortLinkPromises = productsWithRawLinks.map(async (product) => {
+                const shortLink = await convertToShortLink(appId, appSecret, product.product_link);
+                if (shortLink) {
+                    product.product_link = shortLink;
+                } else {
+                    // Fallback: append af_id if short link fails
+                    product.product_link = `${product.product_link}?af_id=${appId}`;
+                }
+                return product;
+            });
+
+            const productsWithShortLinks = await Promise.all(shortLinkPromises);
+            console.log(`Short link conversion complete. ${productsWithShortLinks.filter(p => p.product_link.includes('s.shopee')).length}/${productsWithShortLinks.length} converted successfully.`);
+
             return new Response(
                 JSON.stringify({
-                    products: productsWithDirectLinks,
-                    total: productsWithDirectLinks.length,
+                    products: productsWithShortLinks,
+                    total: productsWithShortLinks.length,
                     source: "shopee_affiliate_api"
                 }),
                 { headers: { ...corsHeaders, "Content-Type": "application/json" } }
