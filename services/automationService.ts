@@ -10,15 +10,25 @@ export const ALL_DAYS: { key: DayOfWeek; label: string; short: string }[] = [
   { key: 'sun', label: 'Domingo', short: 'Dom' },
 ];
 
+/**
+ * Returns the current date/time in Brazil timezone (America/Sao_Paulo).
+ * This matches the Edge Function's timezone logic.
+ */
+const getBrazilNow = (): Date => {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+};
+
 export const getNextSends = (config: AutomationConfig, products: Product[], limit: number = 15) => {
   if (!config.isActive || config.days.length === 0 || config.intervalMinutes === 0) return [];
 
   const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
   const activeDayNums = config.days.map(d => dayMap[d]);
-  const now = new Date();
+  const brNow = getBrazilNow();
   const [startH, startM] = config.startHour.split(':').map(Number);
   const [endH, endM] = config.endHour.split(':').map(Number);
   const sends: { time: Date; product: Product }[] = [];
+  const startMin = startH * 60 + startM;
+  const endMin = endH * 60 + endM;
 
   // Use shuffle list if available, otherwise fallback to simple rotation
   const shuffledIds = config.shuffledProductIds || [];
@@ -41,18 +51,22 @@ export const getNextSends = (config: AutomationConfig, products: Product[], limi
 
   let prodIdx = currentIndex;
 
-  for (let dayOffset = 0; dayOffset < 7 && sends.length < limit; dayOffset++) {
-    const checkDate = new Date(now);
+  for (let dayOffset = 0; dayOffset < 14 && sends.length < limit; dayOffset++) {
+    const checkDate = new Date(brNow);
     checkDate.setDate(checkDate.getDate() + dayOffset);
     if (!activeDayNums.includes(checkDate.getDay())) continue;
 
-    let curMin = startH * 60 + startM;
-    const endMin = endH * 60 + endM;
+    // Calculate the first slot aligned to startHour
+    let curMin = startMin;
 
     if (dayOffset === 0) {
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      if (nowMin > curMin) {
-        curMin = nowMin + (config.intervalMinutes - (nowMin % config.intervalMinutes));
+      const nowMin = brNow.getHours() * 60 + brNow.getMinutes();
+      if (nowMin >= endMin) continue; // Past end time for today, skip to next day
+      if (nowMin > startMin) {
+        // Snap to next interval aligned to startHour
+        const elapsed = nowMin - startMin;
+        const slotsPassed = Math.ceil(elapsed / config.intervalMinutes);
+        curMin = startMin + slotsPassed * config.intervalMinutes;
       }
     }
 
