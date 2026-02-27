@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Product, AppSettings, AutomationConfig } from '../types';
 import { fetchProducts, fetchSettings, updateProduct, importProductsFromIntegration, deleteProduct, deleteAllProducts, createSchedule, extractFromLink, saveProduct, fetchAutomationConfig } from '../services/mockService';
 import { Search, Filter, ExternalLink, Trash2, Copy, Check, Wand2, X, Save, RefreshCw, Loader2, Calendar, Clock, Eye, Trash, Rocket, Link as LinkIcon, CheckCircle2, AlertCircle, Image as ImageIcon, Edit3, Send, AlertTriangle, Package } from 'lucide-react';
@@ -9,13 +9,6 @@ export const Products: React.FC = () => {
   const [automationConfig, setAutomationConfig] = useState<AutomationConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-
-  // Copy Generation State
-  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
-  const [selectedProductForCopy, setSelectedProductForCopy] = useState<Product | null>(null);
-  const [generatedText, setGeneratedText] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
 
   // Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -84,7 +77,7 @@ export const Products: React.FC = () => {
 
       setProducts(products.filter(p => !selectedProducts.has(p.id)));
       setSelectedProducts(new Set());
-      alert('Produtos excluídos com sucesso!');
+      alert('Produtos excluÃ­dos com sucesso!');
     } catch (e) {
       alert('Erro ao excluir produtos selecionados');
     } finally {
@@ -96,7 +89,7 @@ export const Products: React.FC = () => {
     const platform = platformFilter === 'all' ? 'todos os' : 'os produtos da';
     const platformName = platformFilter === 'all' ? 'produtos' : platformFilter;
 
-    if (!confirm(`Tem certeza que deseja excluir ${platform} ${platformName}? Esta ação não pode ser desfeita.`)) {
+    if (!confirm(`Tem certeza que deseja excluir ${platform} ${platformName}? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) {
       return;
     }
 
@@ -104,7 +97,7 @@ export const Products: React.FC = () => {
     try {
       await deleteAllProducts(platformFilter === 'all' ? undefined : platformFilter);
       await loadData();
-      alert('Produtos excluídos com sucesso!');
+      alert('Produtos excluÃ­dos com sucesso!');
     } catch (e) {
       alert('Erro ao excluir produtos');
     } finally {
@@ -139,7 +132,7 @@ export const Products: React.FC = () => {
     try {
       const data = await extractFromLink(quickPostLink);
       if (!data.title) {
-        throw new Error('Não foi possível extrair dados deste link.');
+        throw new Error('NÃ£o foi possÃ­vel extrair dados deste link.');
       }
       setQuickPostData(data);
       setManualPrice(data.price?.toString() || '');
@@ -162,8 +155,6 @@ export const Products: React.FC = () => {
     if (!quickPostData) return;
     setQuickPostSaving(true);
     const price = getQuickPostPrice();
-    const oldPrice = price * 1.2;
-    const salesCopy = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
     try {
       await saveProduct({
         title: quickPostData.title,
@@ -172,7 +163,6 @@ export const Products: React.FC = () => {
         affiliate_link: quickPostLink,
         platform: quickPostData.platform as Product['platform'],
         active: true,
-        salesCopy: salesCopy,
       });
       setQuickPostSaved(true);
       setTimeout(() => {
@@ -198,66 +188,15 @@ export const Products: React.FC = () => {
 
   const formatPrice = (price: number) => price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const generateFromTemplate = (product: Product) => {
-    if (!settings) return '';
-    let text = settings.salesTemplate;
-    text = text.replace('{titulo}', product.title);
-    text = text.replace('{preco}', formatPrice(product.price));
-    // Old price = current price + 20% markup
-    text = text.replace('{preco_antigo}', formatPrice(product.price * 1.2));
-    text = text.replace('{link}', product.affiliate_link);
-    text = text.replace('{plataforma}', product.platform);
+  const generateFromTemplateText = (product: Partial<Product>) => {
+    let text = settings?.salesTemplate || `ðŸ”¥ OFERTA IMPERDÃVEL! ðŸ”¥\n\n{titulo}\n\nðŸ’° De: R$ {preco_antigo}\nâœ… Por apenas: R$ {preco}\n\nðŸ›’ Garanta o seu agora:\n{link}`;
+    text = text.replace(/{titulo}/g, product.title || '');
+    text = text.replace(/{preco}/g, formatPrice(product.price || 0));
+    text = text.replace(/{preco_antigo}/g, formatPrice((product.price || 0) * 1.2));
+    text = text.replace(/{link}/g, product.affiliate_link || '');
+    text = text.replace(/{plataforma}/g, product.platform || '');
+    text = text.replace(/{desconto}/g, '30%');
     return text;
-  };
-
-  const openCopyModal = (product: Product) => {
-    setSelectedProductForCopy(product);
-    if (product.salesCopy) {
-      setGeneratedText(product.salesCopy);
-    } else {
-      setGeneratedText(generateFromTemplate(product));
-    }
-    setCopySuccess(false);
-    setIsCopyModalOpen(true);
-  };
-
-  const handleAiGenerate = () => {
-    setIsGenerating(true);
-    // Simulate AI generation delay
-    setTimeout(() => {
-      if (!selectedProductForCopy) return;
-
-      const baseText = generateFromTemplate(selectedProductForCopy);
-      const intros = [
-        "🚨 ATENÇÃO! OFERTA RELÂMPAGO! 🚨",
-        "😱 VOCÊ NÃO VAI ACREDITAR NESSE PREÇO!",
-        "🔥 SÓ HOJE: Oportunidade Única!",
-        "✨ Chegou o que você esperava!"
-      ];
-      const outros = [
-        "🏃‍♂️ Corra antes que acabe!",
-        "📦 Últimas unidades em estoque!",
-        "⏳ Promoção por tempo limitado!",
-        "👉 Clique no link e garanta o seu!"
-      ];
-
-      const randomIntro = intros[Math.floor(Math.random() * intros.length)];
-      const randomOutro = outros[Math.floor(Math.random() * outros.length)];
-
-      const enhancedText = `${randomIntro}\n\n${baseText}\n\n${randomOutro}`;
-
-      setGeneratedText(enhancedText);
-      setIsGenerating(false);
-    }, 1200);
-  };
-
-  const handleSaveCopy = async () => {
-    if (!selectedProductForCopy) return;
-    const updated = { ...selectedProductForCopy, salesCopy: generatedText };
-    await updateProduct(updated);
-
-    setProducts(products.map(p => p.id === updated.id ? updated : p));
-    setIsCopyModalOpen(false);
   };
 
   const handleImport = async (platform: string) => {
@@ -274,11 +213,7 @@ export const Products: React.FC = () => {
     }
   };
 
-  const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(generatedText);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
-  };
+
 
   const handleDeleteProduct = async (product: Product) => {
     if (confirm(`Deseja realmente excluir "${product.title}"?`)) {
@@ -338,16 +273,7 @@ export const Products: React.FC = () => {
 
   // WhatsApp Share Function
   const handleWhatsAppShare = (product: Product) => {
-    const price = product.price;
-    const oldPrice = price * 1.2;
-    let text = '';
-    if (product.salesCopy) {
-      text = product.salesCopy;
-    } else if (settings) {
-      text = generateFromTemplate(product);
-    } else {
-      text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${product.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${product.affiliate_link}`;
-    }
+    const text = generateFromTemplateText(product);
     const encodedText = encodeURIComponent(text);
     window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   };
@@ -389,7 +315,7 @@ export const Products: React.FC = () => {
                 Ciclo de Envios Finalizado!
               </h3>
               <p className="text-red-700/80 dark:text-red-300/70 text-sm mt-1 max-w-md leading-relaxed">
-                Todos os produtos salvos já foram enviados. Eles continuarão se repetindo automaticamente, mas para renovar seu feed, cadastre ou importe novos produtos.
+                Todos os produtos salvos jÃ¡ foram enviados. Eles continuarÃ£o se repetindo automaticamente, mas para renovar seu feed, cadastre ou importe novos produtos.
               </p>
             </div>
           </div>
@@ -479,7 +405,7 @@ export const Products: React.FC = () => {
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Produto</th>
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Plataforma</th>
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Status</th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">Ações</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">AÃ§Ãµes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -492,7 +418,7 @@ export const Products: React.FC = () => {
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    Nenhum produto encontrado. Adicione um para começar.
+                    Nenhum produto encontrado. Adicione um para comeÃ§ar.
                   </td>
                 </tr>
               ) : (
@@ -602,7 +528,7 @@ export const Products: React.FC = () => {
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-            Nenhum produto encontrado. Adicione um para começar.
+            Nenhum produto encontrado. Adicione um para comeÃ§ar.
           </div>
         ) : (
           filteredProducts.map((product) => (
@@ -685,11 +611,11 @@ export const Products: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900">Importar Vendas — Shopee</h3>
+              <h3 className="font-bold text-lg text-slate-900">Importar Vendas â€” Shopee</h3>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-slate-500 mb-4">Importação automática via API da Shopee usando suas credenciais configuradas.</p>
+              <p className="text-sm text-slate-500 mb-4">ImportaÃ§Ã£o automÃ¡tica via API da Shopee usando suas credenciais configuradas.</p>
 
               {(() => {
                 const config = settings?.integrations?.find(i => i.id === 'shopee');
@@ -704,14 +630,14 @@ export const Products: React.FC = () => {
                   >
                     <span className="font-medium text-slate-700">Shopee</span>
                     {isImporting ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : (
-                      !config?.isEnabled ? <span className="text-xs text-red-400">Não configurado</span> : <ExternalLink size={18} className="text-slate-400" />
+                      !config?.isEnabled ? <span className="text-xs text-red-400">NÃ£o configurado</span> : <ExternalLink size={18} className="text-slate-400" />
                     )}
                   </button>
                 );
               })()}
 
               <p className="text-xs text-slate-400 mt-4 text-center">
-                Para Amazon e Mercado Livre, use o botão <strong>Quick Post</strong> para importar via link.
+                Para Amazon e Mercado Livre, use o botÃ£o <strong>Quick Post</strong> para importar via link.
               </p>
             </div>
           </div>
@@ -803,14 +729,14 @@ export const Products: React.FC = () => {
                           <button
                             onClick={() => setEditingPrice(true)}
                             className="text-xl font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 group"
-                            title="Clique para editar o preço"
+                            title="Clique para editar o preÃ§o"
                           >
                             R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                             <Edit3 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-amber-600 mt-1">⚠️ Clique no preço para corrigir se necessário</p>
+                      <p className="text-xs text-amber-600 mt-1">âš ï¸ Clique no preÃ§o para corrigir se necessÃ¡rio</p>
                       <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 rounded text-xs text-slate-600">
                         {quickPostData.platform}
                       </span>
@@ -821,37 +747,24 @@ export const Products: React.FC = () => {
 
               {/* WhatsApp Template Preview */}
               {quickPostData && (
-                <div className="bg-[#e5ddd5] rounded-xl p-4 border border-slate-200">
+                <div className="bg-[#e5ddd5] rounded-xl p-4 border border-slate-200 mt-4">
                   <h4 className="font-semibold text-slate-700 flex items-center text-sm mb-3">
                     <svg viewBox="0 0 24 24" className="mr-2 text-green-500 w-5 h-5 flex-shrink-0" fill="currentColor">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
                     </svg>
-                    Pré-visualização WhatsApp
+                    PrÃ©-visualizaÃ§Ã£o WhatsApp
                   </h4>
-                  <div className="bg-white rounded-lg shadow-sm p-3 max-w-xs ml-auto">
+                  <div className="bg-white rounded-lg shadow-sm p-3 max-w-xs ml-auto whitespace-pre-wrap text-sm">
                     {quickPostData.image && (
                       <img src={quickPostData.image} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
                     )}
-                    <p className="text-sm font-bold text-slate-900 mb-2">🔥 OFERTA IMPERDÍVEL! 🔥</p>
-                    <p className="text-sm text-slate-800 mb-2">{quickPostData.title}</p>
-                    <p className="text-sm text-slate-500 mb-0.5">
-                      💰 De: R$ {formatPrice(getQuickPostPrice() * 1.2)}
-                    </p>
-                    <p className="text-sm text-emerald-600 font-bold mb-2">
-                      ✅ Por apenas: R$ {formatPrice(getQuickPostPrice())}
-                    </p>
-                    <p className="text-sm text-slate-700 mb-0.5">🛒 Garanta o seu agora:</p>
-                    <p className="text-xs text-blue-600 break-all">
-                      {quickPostLink.length > 50 ? quickPostLink.substring(0, 50) + '...' : quickPostLink}
-                    </p>
+                    {generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product)}
                     <p className="text-[10px] text-slate-400 text-right mt-1">agora</p>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={() => {
-                        const price = getQuickPostPrice();
-                        const oldPrice = price * 1.2;
-                        const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
+                        const text = generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product);
                         navigator.clipboard.writeText(text);
                       }}
                       className="flex-1 text-sm bg-slate-600 text-white py-2.5 rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 font-medium"
@@ -860,9 +773,7 @@ export const Products: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        const price = getQuickPostPrice();
-                        const oldPrice = price * 1.2;
-                        const text = `🔥 OFERTA IMPERDÍVEL! 🔥\n\n${quickPostData.title}\n\n💰 De: R$ ${formatPrice(oldPrice)}\n✅ Por apenas: R$ ${formatPrice(price)}\n\n🛒 Garanta o seu agora:\n${quickPostLink}`;
+                        const text = generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product);
                         const encodedText = encodeURIComponent(text);
                         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
                       }}
@@ -874,99 +785,30 @@ export const Products: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Save Footer */}
-            {quickPostData && (
-              <div className="p-5 border-t border-slate-100 bg-slate-50">
-                <button
-                  onClick={handleQuickPostSave}
-                  disabled={quickPostSaving || quickPostSaved}
-                  className={`w-full px-4 py-3 rounded-lg font-medium flex items-center justify-center transition-all
+          {/* Save Footer */}
+          {quickPostData && (
+            <div className="p-5 border-t border-slate-100 bg-slate-50">
+              <button
+                onClick={handleQuickPostSave}
+                disabled={quickPostSaving || quickPostSaved}
+                className={`w-full px-4 py-3 rounded-lg font-medium flex items-center justify-center transition-all
                     ${quickPostSaved
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'}
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'}
                     disabled:opacity-70`}
-                >
-                  {quickPostSaving ? (
-                    <><Loader2 className="animate-spin mr-2" size={18} /> Salvando...</>
-                  ) : quickPostSaved ? (
-                    <><CheckCircle2 className="mr-2" size={18} /> Salvo em Meus Produtos!</>
-                  ) : (
-                    <><Save className="mr-2" size={18} /> Salvar em Meus Produtos</>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Generate Copy Modal */}
-      {isCopyModalOpen && selectedProductForCopy && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
-              <div className="flex items-center space-x-2">
-                <div className="bg-white p-2 rounded-lg shadow-sm">
-                  <Wand2 size={20} className="text-indigo-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Gerar Copy Persuasiva</h2>
-                  <p className="text-xs text-indigo-700">Otimizado para conversão no WhatsApp</p>
-                </div>
-              </div>
-              <button onClick={() => setIsCopyModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Texto Gerado</label>
-                <div className="relative">
-                  <textarea
-                    className="w-full h-64 p-4 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none font-mono text-sm bg-slate-50"
-                    value={generatedText}
-                    onChange={(e) => setGeneratedText(e.target.value)}
-                  />
-                  {copySuccess && (
-                    <div className="absolute top-4 right-4 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium flex items-center shadow-sm">
-                      <Check size={12} className="mr-1" /> Copiado!
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={handleAiGenerate}
-                  disabled={isGenerating}
-                  className="flex items-center space-x-2 text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors text-sm font-medium"
-                >
-                  {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                  <span>{isGenerating ? 'Gerando...' : 'Regenerar com IA'}</span>
-                </button>
-                <span className="text-xs text-slate-400">Edite livremente antes de salvar</span>
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">
-              <button
-                onClick={handleCopyToClipboard}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors flex items-center space-x-2 font-medium"
               >
-                <Copy size={18} />
-                <span>Copiar</span>
-              </button>
-              <button
-                onClick={handleSaveCopy}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm flex items-center space-x-2 font-medium"
-              >
-                <Save size={18} />
-                <span>Salvar Copy</span>
+                {quickPostSaving ? (
+                  <><Loader2 className="animate-spin mr-2" size={18} /> Salvando...</>
+                ) : quickPostSaved ? (
+                  <><CheckCircle2 className="mr-2" size={18} /> Salvo em Meus Produtos!</>
+                ) : (
+                  <><Save className="mr-2" size={18} /> Salvar em Meus Produtos</>
+                )}
               </button>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -981,7 +823,7 @@ export const Products: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Agendar Envio</h2>
-                  <p className="text-xs text-purple-700">WhatsApp Automático</p>
+                  <p className="text-xs text-purple-700">WhatsApp AutomÃ¡tico</p>
                 </div>
               </div>
               <button onClick={() => setIsScheduleModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1010,11 +852,11 @@ export const Products: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Frequência</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">FrequÃªncia</label>
                 <div className="flex gap-2">
                   {[
                     { value: 'once', label: 'Uma vez' },
-                    { value: 'daily', label: 'Diário' },
+                    { value: 'daily', label: 'DiÃ¡rio' },
                     { value: 'weekly', label: 'Semanal' }
                   ].map((opt) => (
                     <button
@@ -1052,54 +894,53 @@ export const Products: React.FC = () => {
       )}
 
       {/* Preview Template Modal */}
-      {
-        isPreviewOpen && previewProduct && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
-                <div className="flex items-center space-x-2">
-                  <div className="bg-white p-2 rounded-lg shadow-sm">
-                    <Eye size={20} className="text-emerald-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">Template Salvo</h2>
-                    <p className="text-xs text-emerald-700">Pronto para WhatsApp</p>
-                  </div>
+      {isPreviewOpen && previewProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
+              <div className="flex items-center space-x-2">
+                <div className="bg-white p-2 rounded-lg shadow-sm">
+                  <Eye size={20} className="text-emerald-600" />
                 </div>
-                <button onClick={() => setIsPreviewOpen(false)} className="text-slate-400 hover:text-slate-600">
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-                  <img src={previewProduct.image} alt="" className="w-14 h-14 rounded-lg object-cover" />
-                  <div>
-                    <p className="font-medium text-slate-900">{previewProduct.title}</p>
-                    <p className="text-lg text-emerald-600 font-bold">{formatCurrency(previewProduct.price)}</p>
-                  </div>
-                </div>
-                <div className="bg-[#e5ddd5] p-4 rounded-lg">
-                  <div className="bg-white p-4 rounded-lg shadow-sm text-sm text-gray-800 whitespace-pre-wrap">
-                    {previewProduct.salesCopy || generateFromTemplate(previewProduct)}
-                  </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Template Salvo</h2>
+                  <p className="text-xs text-emerald-700">Pronto para WhatsApp</p>
                 </div>
               </div>
-              <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    const textToCopy = previewProduct.salesCopy || generateFromTemplate(previewProduct);
-                    navigator.clipboard.writeText(textToCopy);
-                    alert('Texto copiado!');
-                  }}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm flex items-center space-x-2 font-medium"
-                >
-                  <Copy size={18} />
-                  <span>Copiar Texto</span>
-                </button>
+              <button onClick={() => setIsPreviewOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
+                <img src={previewProduct.image} alt="" className="w-14 h-14 rounded-lg object-cover" />
+                <div>
+                  <p className="font-medium text-slate-900">{previewProduct.title}</p>
+                  <p className="text-lg text-emerald-600 font-bold">{formatCurrency(previewProduct.price)}</p>
+                </div>
+              </div>
+              <div className="bg-[#e5ddd5] p-4 rounded-lg">
+                <div className="bg-white p-4 rounded-lg shadow-sm text-sm text-gray-800 whitespace-pre-wrap">
+                  {generateFromTemplateText(previewProduct)}
+                </div>
               </div>
             </div>
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  const textToCopy = generateFromTemplateText(previewProduct);
+                  navigator.clipboard.writeText(textToCopy);
+                  alert('Texto copiado!');
+                }}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm flex items-center space-x-2 font-medium"
+              >
+                <Copy size={18} />
+                <span>Copiar Texto</span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 };

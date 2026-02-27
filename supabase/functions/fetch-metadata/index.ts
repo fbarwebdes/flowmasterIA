@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
                         }
                     }
                 }
-            } catch (apiErr) {
+            } catch (apiErr: any) {
                 console.error('Shopee API Error:', apiErr.message);
             }
         }
@@ -178,7 +178,7 @@ Deno.serve(async (req: Request) => {
             }
         } catch { }
 
-        let price = apiPrice || jsonLdPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
+        let price: string | null = apiPrice || jsonLdPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
 
         // Enhanced Mercado Livre NORDIC_RENDERING_CTX fallback
         if (!price || price === '0' || price === '0.00') {
@@ -207,7 +207,7 @@ Deno.serve(async (req: Request) => {
             price = price.replace(/[^\d.,]/g, '').replace(',', '.');
             if (price.split('.').length > 2) {
                 const parts = price.split('.');
-                const cents = parts.pop();
+                const cents = parts?.pop() || '';
                 price = parts.join('') + '.' + cents;
             }
         }

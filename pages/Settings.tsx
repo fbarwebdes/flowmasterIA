@@ -9,7 +9,6 @@ export const Settings: React.FC = () => {
     const [userEmail, setUserEmail] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'general' | 'template'>('general');
 
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -61,85 +60,42 @@ export const Settings: React.FC = () => {
             )}
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/50">
-                    <button
-                        onClick={() => setActiveTab('general')}
-                        className={`px-6 py-4 text-sm font-semibold flex items-center space-x-2 transition-all ${activeTab === 'general' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <User size={18} /> <span>Geral</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('template')}
-                        className={`px-6 py-4 text-sm font-semibold flex items-center space-x-2 transition-all ${activeTab === 'template' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <MessageSquare size={18} /> <span>Template de Vendas</span>
-                    </button>
-                </div>
-
                 <div className="p-6">
-                    {activeTab === 'general' && (
-                        <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-slate-700">Nome de Exibição</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Seu nome"
-                                        value={settings.displayName || ''}
-                                        onChange={(e) => setSettings({ ...settings, displayName: e.target.value })}
-                                        className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900 transition-all text-sm"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-slate-700">E-mail</label>
-                                    <input type="email" value={userEmail} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none text-slate-400 text-sm italic" />
-                                </div>
-
-                            </div>
-
-                            <div className="flex items-center justify-between py-6 border-t border-slate-100">
-                                <div>
-                                    <h4 className="font-bold text-slate-900 text-sm sm:text-base">Resposta Automática</h4>
-                                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Responder automaticamente quando alguém interagir com o bot.</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={settings.autoReply}
-                                        onChange={(e) => setSettings({ ...settings, autoReply: e.target.checked })}
-                                    />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
-                                </label>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'template' && (
-                        <div className="space-y-6">
-                            <div className="bg-slate-900 rounded-2xl p-5 text-indigo-100 shadow-lg shadow-slate-200">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Smartphone size={18} className="text-emerald-400" />
-                                    <p className="font-bold text-sm">Variáveis de Texto Inteligentes:</p>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {['{titulo}', '{preco}', '{preco_antigo}', '{link}', '{plataforma}', '{desconto}'].map(v => (
-                                        <code key={v} className="bg-white/10 px-2 py-1 rounded text-[10px] font-mono border border-white/5">{v}</code>
-                                    ))}
-                                </div>
+                    <div className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-slate-700">Nome de Exibição</label>
+                                <input
+                                    type="text"
+                                    placeholder="Seu nome"
+                                    value={settings.displayName || ''}
+                                    onChange={(e) => setSettings({ ...settings, displayName: e.target.value })}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900 transition-all text-sm"
+                                />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-bold text-slate-700 font-mono">Template de Vendas (WhatsApp)</label>
-                                <textarea
-                                    rows={10}
-                                    value={settings.salesTemplate}
-                                    onChange={(e) => setSettings({ ...settings, salesTemplate: e.target.value })}
-                                    className="w-full rounded-2xl border border-slate-300 px-4 py-4 outline-none focus:ring-2 focus:ring-slate-900 font-mono text-sm leading-relaxed"
-                                    placeholder="Escreva seu template aqui..."
-                                ></textarea>
+                                <label className="block text-sm font-bold text-slate-700">E-mail</label>
+                                <input type="email" value={userEmail} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none text-slate-400 text-sm italic" />
                             </div>
+
                         </div>
-                    )}
+
+                        <div className="flex items-center justify-between py-6 border-t border-slate-100">
+                            <div>
+                                <h4 className="font-bold text-slate-900 text-sm sm:text-base">Resposta Automática</h4>
+                                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Responder automaticamente quando alguém interagir com o bot.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={settings.autoReply}
+                                    onChange={(e) => setSettings({ ...settings, autoReply: e.target.checked })}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
+                            </label>
+                        </div>
+                    </div>
 
                     <div className="mt-10 flex justify-end">
                         <button

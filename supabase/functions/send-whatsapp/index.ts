@@ -81,6 +81,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiHost = baseUrl ? baseUrl.replace(/\/$/, '') : `https://api.green-api.com`;
+      const greenApiUrl = `${apiHost}/waInstance${instanceId}/sendMessage/${token}`;
       console.log(`Calling Green API: ${greenApiUrl}`);
 
       try {
@@ -100,9 +101,10 @@ Deno.serve(async (req: Request) => {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-      } catch (fetchErr) {
+      } catch (e) {
+        const fetchErr = e as any;
         console.error('Fetch error calling Green API:', fetchErr);
-        return new Response(JSON.stringify({ success: false, error: `Erro de rede: ${fetchErr.message}` }), {
+        return new Response(JSON.stringify({ success: false, error: `Erro de rede: ${fetchErr.message || String(fetchErr)}` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -177,6 +179,17 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
+        // --- PREVENT REPETITION LOGIC ---
+        // Fetch recently sent products in the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentSends } = await supabase
+          .from('schedules')
+          .select('product_id')
+          .gte('scheduled_time', twentyFourHoursAgo)
+          .eq('status', 'sent');
+
+        const recentlySentIds = new Set((recentSends || []).map((s: any) => s.product_id));
+
         let product: any;
         let shuffledIds = config.shuffled_product_ids || [];
         let currentIndex = config.last_shuffle_index || 0;
@@ -210,33 +223,47 @@ Deno.serve(async (req: Request) => {
             }).eq('id', config.id);
           }
 
-          // --- Smart Recovery: Skip missing products ---
+          // --- Smart Recovery: Skip missing or recently sent products ---
           let skipCount = 0;
-          while (!product && currentIndex < shuffledIds.length && skipCount < 50) {
-            product = allProducts.find((p: any) => p.id === shuffledIds[currentIndex]);
-            if (!product) {
-              console.log(`Product ID ${shuffledIds[currentIndex]} not found, skipping...`);
+          let candidateFound = false;
+
+          while (!candidateFound && currentIndex < shuffledIds.length && skipCount < allProducts.length + 50) {
+            const candidateId = shuffledIds[currentIndex];
+            const candidate = allProducts.find((p: any) => p.id === candidateId);
+
+            if (!candidate) {
+              console.log(`Product ID ${candidateId} not found, skipping...`);
               currentIndex++;
               skipCount++;
+              continue;
             }
+
+            if (recentlySentIds.has(candidateId)) {
+              console.log(`Product ID ${candidateId} ("${candidate.title}") was already sent in the last 24h, skipping to prevent repetition...`);
+              currentIndex++;
+              skipCount++;
+              continue;
+            }
+
+            product = candidate;
+            candidateFound = true;
           }
 
           if (!product) {
-            // Emergency fallback if all items in shuffled list are gone
-            console.log("All current IDs invalid, hard reset...");
-            shuffledIds = interleaveProducts(allProducts);
-            currentIndex = 0;
-            product = allProducts[0]; // Emergency fallback 
+            console.log("All current IDs invalid or recently sent, treating as cycle complete/no viable products...");
+            results.push({ user: config.user_id, skipped: 'all_products_recently_sent_or_invalid' });
 
-            await supabase.from('automation_config').update({
-              last_shuffle_index: 0,
-              shuffled_product_ids: shuffledIds
-            }).eq('id', config.id);
-
-            if (!product) {
-              results.push({ user: config.user_id, skipped: 'no_active_products_found_after_reset' });
-              continue;
+            // If we reached the end of the array, prepare for next time
+            if (currentIndex >= shuffledIds.length) {
+              shuffledIds = interleaveProducts(allProducts);
+              currentIndex = 0;
+              await supabase.from('automation_config').update({
+                cycle_completed: true,
+                last_shuffle_index: 0,
+                shuffled_product_ids: shuffledIds
+              }).eq('id', config.id);
             }
+            continue;
           }
         }
 
@@ -256,13 +283,13 @@ Deno.serve(async (req: Request) => {
         const salesTemplate = settings?.salesTemplate || '';
         let message = '';
 
-        if (product.sales_copy) message = product.sales_copy;
-        else if (salesTemplate) {
+        if (salesTemplate) {
           message = salesTemplate
             .replace(/\{nome\}|\{titulo\}/gi, product.title)
             .replace(/(?:R\$\s?)?\{preco\}/gi, `R$ ${formatPrice(price)}`)
             .replace(/(?:R\$\s?)?\{preco_original\}|(?:R\$\s?)?\{preco_antigo\}/gi, `R$ ${formatPrice(oldPrice)}`)
             .replace(/\{link\}/gi, product.affiliate_link || '')
+            .replace(/\{plataforma\}/gi, product.platform || '')
             .replace(/\{desconto\}/gi, '30%');
         } else {
           message = `\u{1F525} OFERTA RELÂMPAGO! \u{1F525}\n\n${product.title}\n\n\u{274C} De: ~R$ ${formatPrice(oldPrice)}~\n\u2705 AGORA POR APENAS: R$ ${formatPrice(price)}\n\n\u{1F6A8} CORRA! Estoque LIMITADO!\n\n\u{1F449} GARANTA O SEU AQUI:\n${product.affiliate_link || ''}\n\n\u{23F0} Promoção por TEMPO LIMITADO!`;

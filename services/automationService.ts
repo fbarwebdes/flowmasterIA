@@ -18,7 +18,7 @@ const getBrazilNow = (): Date => {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 };
 
-export const getNextSends = (config: AutomationConfig, products: Product[], limit: number = 15) => {
+export const getNextSends = (config: AutomationConfig, products: Product[], limit: number = 15, recentSentProductIds?: Set<string>) => {
   if (!config.isActive || config.days.length === 0 || config.intervalMinutes === 0) return [];
 
   const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
@@ -76,13 +76,29 @@ export const getNextSends = (config: AutomationConfig, products: Product[], limi
     while (curMin < endMin && sends.length < limit) {
       let product = getProduct(prodIdx);
 
-      // Smart Recovery: Skip missing products in strict cycle
+      // Smart Recovery: Skip missing or recently sent products in strict cycle
       if (isStrictCycle && !product) {
         let skipCount = 0;
-        while (!product && prodIdx < shuffledIds.length && skipCount < 50) {
-          prodIdx++;
-          skipCount++;
-          product = getProduct(prodIdx);
+        let candidateFound = false;
+
+        while (!candidateFound && prodIdx < shuffledIds.length && skipCount < products.length + 50) {
+          const candidateId = shuffledIds[prodIdx];
+          const candidate = getProduct(prodIdx);
+
+          if (!candidate) {
+            prodIdx++;
+            skipCount++;
+            continue;
+          }
+
+          if (recentSentProductIds && recentSentProductIds.has(candidateId)) {
+            prodIdx++;
+            skipCount++;
+            continue;
+          }
+
+          product = candidate;
+          candidateFound = true;
         }
       }
 

@@ -303,8 +303,15 @@ export const Dashboard: React.FC = () => {
                 </div>
               );
 
-              const nextAutoSends = getNextSends(automationConfig, allProducts, 15);
               const now = new Date();
+              const twentyFourHoursAgoMs = now.getTime() - 24 * 60 * 60 * 1000;
+              const recentSentProductIds = new Set<string>(
+                allSchedules
+                  .filter(s => s.status === 'sent' && new Date(s.scheduledTime).getTime() >= twentyFourHoursAgoMs)
+                  .map(s => s.productId || '')
+              );
+
+              const nextAutoSends = getNextSends(automationConfig, allProducts, 15, recentSentProductIds);
 
               // Get future manual schedules
               const futureManualSends = allSchedules
