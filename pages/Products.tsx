@@ -77,7 +77,7 @@ export const Products: React.FC = () => {
 
       setProducts(products.filter(p => !selectedProducts.has(p.id)));
       setSelectedProducts(new Set());
-      alert('Produtos excluÃ­dos com sucesso!');
+      alert('Produtos excluídos com sucesso!');
     } catch (e) {
       alert('Erro ao excluir produtos selecionados');
     } finally {
@@ -89,7 +89,7 @@ export const Products: React.FC = () => {
     const platform = platformFilter === 'all' ? 'todos os' : 'os produtos da';
     const platformName = platformFilter === 'all' ? 'produtos' : platformFilter;
 
-    if (!confirm(`Tem certeza que deseja excluir ${platform} ${platformName}? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) {
+    if (!confirm(`Tem certeza que deseja excluir ${platform} ${platformName}? Esta ação não pode ser desfeita.`)) {
       return;
     }
 
@@ -97,7 +97,7 @@ export const Products: React.FC = () => {
     try {
       await deleteAllProducts(platformFilter === 'all' ? undefined : platformFilter);
       await loadData();
-      alert('Produtos excluÃ­dos com sucesso!');
+      alert('Produtos excluídos com sucesso!');
     } catch (e) {
       alert('Erro ao excluir produtos');
     } finally {
@@ -132,7 +132,7 @@ export const Products: React.FC = () => {
     try {
       const data = await extractFromLink(quickPostLink);
       if (!data.title) {
-        throw new Error('NÃ£o foi possÃ­vel extrair dados deste link.');
+        throw new Error('Não foi possível extrair dados deste link.');
       }
       setQuickPostData(data);
       setManualPrice(data.price?.toString() || '');
@@ -315,7 +315,7 @@ export const Products: React.FC = () => {
                 Ciclo de Envios Finalizado!
               </h3>
               <p className="text-red-700/80 dark:text-red-300/70 text-sm mt-1 max-w-md leading-relaxed">
-                Todos os produtos salvos jÃ¡ foram enviados. Eles continuarÃ£o se repetindo automaticamente, mas para renovar seu feed, cadastre ou importe novos produtos.
+                Todos os produtos salvos já foram enviados. Eles continuarão se repetindo automaticamente, mas para renovar seu feed, cadastre ou importe novos produtos.
               </p>
             </div>
           </div>
@@ -405,7 +405,7 @@ export const Products: React.FC = () => {
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Produto</th>
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Plataforma</th>
                 <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Status</th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">AÃ§Ãµes</th>
+                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -418,7 +418,7 @@ export const Products: React.FC = () => {
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    Nenhum produto encontrado. Adicione um para comeÃ§ar.
+                    Nenhum produto encontrado. Adicione um para começar.
                   </td>
                 </tr>
               ) : (
@@ -467,27 +467,12 @@ export const Products: React.FC = () => {
                     </td>
                     <td className="px-4 lg:px-6 py-4 text-right">
                       <div className="flex justify-end space-x-1">
-                        {/* WhatsApp Share */}
-                        <button
-                          onClick={() => handleWhatsAppShare(product)}
-                          className="p-2 rounded-lg transition-colors bg-green-50 text-green-600 hover:bg-green-100"
-                          title="Enviar via WhatsApp"
-                        >
-                          <Send size={18} />
-                        </button>
                         <button
                           onClick={() => openPreview(product)}
                           className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                           title="Ver Template Salvo"
                         >
                           <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openScheduleModal(product)}
-                          className="p-2 rounded-lg transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
-                          title="Agendar Envio"
-                        >
-                          <Calendar size={18} />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product)}
@@ -528,7 +513,7 @@ export const Products: React.FC = () => {
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-            Nenhum produto encontrado. Adicione um para comeÃ§ar.
+            Nenhum produto encontrado. Adicione um para começar.
           </div>
         ) : (
           filteredProducts.map((product) => (
@@ -570,27 +555,12 @@ export const Products: React.FC = () => {
                   Ver Link <ExternalLink size={10} className="ml-1" />
                 </a>
                 <div className="flex space-x-1">
-                  {/* WhatsApp Share */}
-                  <button
-                    onClick={() => handleWhatsAppShare(product)}
-                    className="p-2 rounded-lg transition-colors bg-green-50 text-green-600 hover:bg-green-100"
-                    title="Enviar via WhatsApp"
-                  >
-                    <Send size={16} />
-                  </button>
                   <button
                     onClick={() => openPreview(product)}
                     className="p-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                     title="Ver Template"
                   >
                     <Eye size={16} />
-                  </button>
-                  <button
-                    onClick={() => openScheduleModal(product)}
-                    className="p-2 rounded-lg transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
-                    title="Agendar"
-                  >
-                    <Calendar size={16} />
                   </button>
                   <button
                     onClick={() => handleDeleteProduct(product)}
@@ -615,7 +585,7 @@ export const Products: React.FC = () => {
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-slate-500 mb-4">ImportaÃ§Ã£o automÃ¡tica via API da Shopee usando suas credenciais configuradas.</p>
+              <p className="text-sm text-slate-500 mb-4">Importação automática via API da Shopee usando suas credenciais configuradas.</p>
 
               {(() => {
                 const config = settings?.integrations?.find(i => i.id === 'shopee');
@@ -630,7 +600,7 @@ export const Products: React.FC = () => {
                   >
                     <span className="font-medium text-slate-700">Shopee</span>
                     {isImporting ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : (
-                      !config?.isEnabled ? <span className="text-xs text-red-400">NÃ£o configurado</span> : <ExternalLink size={18} className="text-slate-400" />
+                      !config?.isEnabled ? <span className="text-xs text-red-400">Não configurado</span> : <ExternalLink size={18} className="text-slate-400" />
                     )}
                   </button>
                 );
@@ -729,7 +699,7 @@ export const Products: React.FC = () => {
                           <button
                             onClick={() => setEditingPrice(true)}
                             className="text-xl font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 group"
-                            title="Clique para editar o preÃ§o"
+                            title="Clique para editar o preço"
                           >
                             R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
                             <Edit3 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -752,7 +722,7 @@ export const Products: React.FC = () => {
                     <svg viewBox="0 0 24 24" className="mr-2 text-green-500 w-5 h-5 flex-shrink-0" fill="currentColor">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
                     </svg>
-                    PrÃ©-visualizaÃ§Ã£o WhatsApp
+                    Pré-visualização WhatsApp
                   </h4>
                   <div className="bg-white rounded-lg shadow-sm p-3 max-w-xs ml-auto whitespace-pre-wrap text-sm">
                     {quickPostData.image && (
