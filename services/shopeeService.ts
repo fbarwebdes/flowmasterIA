@@ -22,6 +22,7 @@ interface ShopeeProduct {
 interface ShopeeCredentials {
   appId: string;
   appSecret: string;
+  subId?: string;
 }
 
 import { fetchSettings, fetchAutomationConfig, saveAutomationConfig } from './mockService';
@@ -37,7 +38,8 @@ export const getShopeeCredentials = async (): Promise<ShopeeCredentials | null> 
 
   return {
     appId: shopeeConfig.credentials.partnerId || '',
-    appSecret: shopeeConfig.credentials.apiKey || ''
+    appSecret: shopeeConfig.credentials.apiKey || '',
+    subId: shopeeConfig.credentials.subId
   };
 };
 
@@ -77,6 +79,10 @@ export const fetchShopeeProducts = async (keyword: string = '', shopId?: string)
       keyword: keyword,
       limit: 50
     };
+
+    if (credentials.subId) {
+      payload.subId = credentials.subId;
+    }
 
     if (shopId) {
       payload.shopId = shopId;
@@ -197,11 +203,12 @@ export const importShopeeProducts = async (products: ShopeeProduct[]): Promise<n
 };
 
 // Validate Shopee credentials against the Edge Function
-export const validateShopeeCredentials = async (appId: string, appSecret: string): Promise<{ valid: boolean; message?: string }> => {
+export const validateShopeeCredentials = async (appId: string, appSecret: string, subId?: string): Promise<{ valid: boolean; message?: string }> => {
   try {
     const data = await callEdgeFunction({
       appId,
       appSecret,
+      subId,
       action: 'validate',
       keyword: 'celular',
       limit: 1

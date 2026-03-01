@@ -113,30 +113,30 @@ async function callShopeeGraphQL(
     return response.json();
 }
 
-// Create direct product URL with affiliate ID (fallback when short link generation fails)
 function createDirectProductUrl(
     productName: string,
     shopId: string | number,
     itemId: string | number,
     affiliateId: string
 ): string {
-    return `https://shopee.com.br/product/${shopId}/${itemId}?af_id=${affiliateId}`;
+    return `https://shopee.com.br/product/${shopId}/${itemId}?affiliate_id=${affiliateId}`;
 }
 
 // Create a search link as fallback for demo products
 function createReliableSearchLink(keyword: string, affiliateId: string): string {
     const encoded = encodeURIComponent(keyword);
-    return `https://shopee.com.br/search?keyword=${encoded}&sortBy=sales&af_id=${affiliateId}`;
+    return `https://shopee.com.br/search?keyword=${encoded}&sortBy=sales&affiliate_id=${affiliateId}`;
 }
 
 // Convert a raw Shopee URL into a proper short affiliate link
 async function convertToShortLink(
     appId: string,
     appSecret: string,
-    originUrl: string
+    originUrl: string,
+    subId: string = ''
 ): Promise<string | null> {
     try {
-        const payload = getGenerateShortLinkMutation(originUrl);
+        const payload = getGenerateShortLinkMutation(originUrl, subId);
         const result = await callShopeeGraphQL(appId, appSecret, payload);
         const shortLink = result?.data?.generateShortLink?.shortLink;
         if (shortLink) {
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-        const { appId, appSecret, keyword, limit = 50 } = await req.json();
+        const { appId, appSecret, subId = '', keyword, limit = 50 } = await req.json();
 
         if (!appId || !appSecret) {
             // Return fallback immediately if no credentials
@@ -225,12 +225,12 @@ Deno.serve(async (req: Request) => {
             // Step 2: Convert all URLs to tracked short links via generateShortLink
             console.log(`Converting ${productsWithRawLinks.length} product links to short affiliate links...`);
             const shortLinkPromises = productsWithRawLinks.map(async (product) => {
-                const shortLink = await convertToShortLink(appId, appSecret, product.product_link);
+                const shortLink = await convertToShortLink(appId, appSecret, product.product_link, subId);
                 if (shortLink) {
                     product.product_link = shortLink;
                 } else {
-                    // Fallback: append af_id if short link fails
-                    product.product_link = `${product.product_link}?af_id=${appId}`;
+                    // Fallback: append affiliate_id and sub_id if short link fails
+                    product.product_link = `${product.product_link}?affiliate_id=${appId}${subId ? `&sub_id=${subId}` : ''}`;
                 }
                 return product;
             });

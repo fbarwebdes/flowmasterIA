@@ -9,6 +9,7 @@ export interface IntegrationConfig {
     apiKey?: string;
     apiSecret?: string;
     partnerId?: string; // For Shopee
+    subId?: string;     // For Shopee Tracking
     baseUrl?: string;   // For WhatsApp (Green API base URL)
     token?: string;     // For WhatsApp (apiTokenInstance)
     instanceId?: string; // For Green API (idInstance)
