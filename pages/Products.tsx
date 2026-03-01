@@ -189,7 +189,7 @@ export const Products: React.FC = () => {
   const formatPrice = (price: number) => price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const generateFromTemplateText = (product: Partial<Product>) => {
-    let text = settings?.salesTemplate || `ðŸ”¥ OFERTA IMPERDÃVEL! ðŸ”¥\n\n{titulo}\n\nðŸ’° De: R$ {preco_antigo}\nâœ… Por apenas: R$ {preco}\n\nðŸ›’ Garanta o seu agora:\n{link}`;
+    let text = settings?.salesTemplate || `🔥 OFERTA IMPERDÍVEL! 🔥\n\n{titulo}\n\n💰 De: R$ {preco_antigo}\n✅ Por apenas: R$ {preco}\n\n🛒 Garanta o seu agora:\n{link}`;
     text = text.replace(/{titulo}/g, product.title || '');
     text = text.replace(/{preco}/g, formatPrice(product.price || 0));
     text = text.replace(/{preco_antigo}/g, formatPrice((product.price || 0) * 1.2));
@@ -581,7 +581,7 @@ export const Products: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900">Importar Vendas â€” Shopee</h3>
+              <h3 className="font-bold text-lg text-slate-900">Importar Vendas — Shopee</h3>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
             <div className="p-6">
@@ -607,7 +607,7 @@ export const Products: React.FC = () => {
               })()}
 
               <p className="text-xs text-slate-400 mt-4 text-center">
-                Para Amazon e Mercado Livre, use o botÃ£o <strong>Quick Post</strong> para importar via link.
+                Para Amazon e Mercado Livre, use o botão <strong>Quick Post</strong> para importar via link.
               </p>
             </div>
           </div>
@@ -706,7 +706,7 @@ export const Products: React.FC = () => {
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-amber-600 mt-1">âš ï¸ Clique no preÃ§o para corrigir se necessÃ¡rio</p>
+                      <p className="text-xs text-amber-600 mt-1">⚠️ Clique no preço para corrigir se necessário</p>
                       <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 rounded text-xs text-slate-600">
                         {quickPostData.platform}
                       </span>
@@ -793,7 +793,7 @@ export const Products: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Agendar Envio</h2>
-                  <p className="text-xs text-purple-700">WhatsApp AutomÃ¡tico</p>
+                  <p className="text-xs text-purple-700">WhatsApp Automático</p>
                 </div>
               </div>
               <button onClick={() => setIsScheduleModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -822,11 +822,11 @@ export const Products: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">FrequÃªncia</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Frequência</label>
                 <div className="flex gap-2">
                   {[
                     { value: 'once', label: 'Uma vez' },
-                    { value: 'daily', label: 'DiÃ¡rio' },
+                    { value: 'daily', label: 'Diário' },
                     { value: 'weekly', label: 'Semanal' }
                   ].map((opt) => (
                     <button
