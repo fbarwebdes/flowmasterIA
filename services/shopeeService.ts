@@ -114,14 +114,25 @@ export const saveShopeeProduct = async (shopeeProduct: ShopeeProduct): Promise<P
     .maybeSingle();
 
   if (existing) {
-    // Skip duplicate
-    console.log('Product already exists:', shopeeProduct.item_name);
+    // Update existing product with new affiliate link (to refresh tracking ID)
+    console.log('Product already exists, updating link:', shopeeProduct.item_name);
+    const { data: updated, error: updateError } = await supabase
+      .from('products')
+      .update({ affiliate_link: shopeeProduct.product_link })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating existing product link:', updateError);
+    }
+
     return {
       id: existing.id,
       title: shopeeProduct.item_name,
       price: shopeeProduct.item_price,
       image: shopeeProduct.item_image,
-      affiliate_link: shopeeProduct.product_link,
+      affiliate_link: updated?.affiliate_link || shopeeProduct.product_link,
       platform: 'Shopee',
       active: true,
       source: 'shopee',
