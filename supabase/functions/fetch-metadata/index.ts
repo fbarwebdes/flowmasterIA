@@ -104,6 +104,26 @@ Deno.serve(async (req: Request) => {
             }
         }
 
+        // --- MERCADO LIVRE SOCIAL PROFILE HANDLING ---
+        // Some meli.la links go to a social page. We try to find the actual product link.
+        if (finalUrl.includes('meli.la') || finalUrl.includes('mercadolivre.com.br/social/')) {
+            try {
+                const socialRes = await fetch(finalUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1' }
+                });
+                const socialHtml = await socialRes.text();
+                // Find "Ir para o produto" link
+                const matchLink = socialHtml.match(/href="([^"]+)"[^>]*>Ir para produto<\/a>/i) ||
+                    socialHtml.match(/class="[^"]*poly-component__link--action-link[^"]*"[^>]*href="([^"]+)"/i);
+                if (matchLink) {
+                    finalUrl = matchLink[1].split('?')[0]; // Clean up tracking
+                    console.log('Redirecting to real ML product URL:', finalUrl);
+                }
+            } catch (e) {
+                console.warn('ML Social redirect failed, using original URL');
+            }
+        }
+
         // --- GENERIC SCRAPING (for Amazon, Mercado Livre, etc.) ---
         const response = await fetch(finalUrl, {
             headers: {
@@ -139,9 +159,10 @@ Deno.serve(async (req: Request) => {
         let image = apiImage || getMeta('og:image') || getMeta('twitter:image') || '';
         let price = apiPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
 
-        // Mercado Livre specialized price parsing
+        // Specialized price parsing for Mercado Livre if meta tags fail
         if (!price || price === '0' || price === '0.00') {
-            const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i);
+            const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i) ||
+                html.match(/class="andes-visual-price__amount">([\d.,]+)<\/span>/i);
             if (mlMatch) price = mlMatch[1];
         }
 

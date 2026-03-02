@@ -482,15 +482,17 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
     }
 
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || supabaseKey;
 
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ url: link, userId: user?.id }),
+      body: JSON.stringify({ url: link, userId: session?.user?.id }),
     });
 
     if (!response.ok) {
