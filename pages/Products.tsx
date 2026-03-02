@@ -660,20 +660,30 @@ export const Products: React.FC = () => {
 
               {/* Product Preview */}
               {quickPostData && (
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-4">
-                  <h4 className="font-semibold text-slate-700 flex items-center text-sm">
-                    <ImageIcon className="mr-2 text-blue-500" size={18} /> Dados do Produto
-                  </h4>
-                  <div className="flex gap-4">
-                    {quickPostData.image ? (
-                      <img src={quickPostData.image} alt="Produto" className="w-20 h-20 rounded-lg object-cover border flex-shrink-0" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
-                        <ImageIcon className="text-slate-400" size={28} />
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-800 flex items-center text-sm">
+                      <div className="bg-blue-50 p-1.5 rounded-lg mr-2">
+                        <ImageIcon className="text-blue-600" size={16} />
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 text-sm line-clamp-2">{quickPostData.title}</p>
+                      Dados do Produto
+                    </h4>
+                    <span className="px-2.5 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      {quickPostData.platform}
+                    </span>
+                  </div>
+                  <div className="flex gap-5">
+                    <div className="relative group">
+                      {quickPostData.image ? (
+                        <img src={quickPostData.image} alt="Produto" className="w-24 h-24 rounded-xl object-contain bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-105" />
+                      ) : (
+                        <div className="w-24 h-24 rounded-xl bg-slate-50 flex items-center justify-center border border-dashed border-slate-300">
+                          <ImageIcon className="text-slate-300" size={32} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <p className="font-semibold text-slate-900 text-sm line-clamp-2 leading-snug mb-2">{quickPostData.title}</p>
                       {/* Editable Price */}
                       <div className="mt-2 flex items-center gap-2">
                         {editingPrice ? (
@@ -697,14 +707,13 @@ export const Products: React.FC = () => {
                             title="Clique para editar o preço"
                           >
                             R$ {getQuickPostPrice()?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                            <Edit3 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Edit3 size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-amber-600 mt-1">⚠️ Clique no preço para corrigir se necessário</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 bg-slate-200 rounded text-xs text-slate-600">
-                        {quickPostData.platform}
-                      </span>
+                      <p className="text-[10px] text-amber-600 mt-1.5 flex items-center bg-amber-50 px-2 py-0.5 rounded w-fit">
+                        <AlertCircle size={10} className="mr-1" /> Clique no preço para editar
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -712,37 +721,54 @@ export const Products: React.FC = () => {
 
               {/* WhatsApp Template Preview */}
               {quickPostData && (
-                <div className="bg-[#e5ddd5] rounded-xl p-4 border border-slate-200 mt-4">
-                  <h4 className="font-semibold text-slate-700 flex items-center text-sm mb-3">
-                    <svg viewBox="0 0 24 24" className="mr-2 text-green-500 w-5 h-5 flex-shrink-0" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
-                    </svg>
-                    Pré-visualização WhatsApp
-                  </h4>
-                  <div className="bg-white rounded-2xl rounded-tr-none shadow-md p-3.5 max-w-[85%] sm:max-w-xs ml-auto whitespace-pre-wrap text-sm break-words relative">
-                    {quickPostData.image && (
-                      <img src={quickPostData.image} alt="" className="w-full h-40 object-cover rounded-xl mb-3 shadow-sm border border-slate-100" />
-                    )}
-                    <div className="text-slate-800 leading-relaxed font-normal">
-                      {generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product)}
-                    </div>
-                    <div className="flex justify-end items-center gap-1 mt-1">
-                      <p className="text-[10px] text-slate-400">agora</p>
-                      <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-blue-500" fill="currentColor">
-                        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
-                        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                <div className="bg-[#f0f2f5] rounded-2xl p-6 border border-slate-200 mt-2 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-green-500 opacity-20"></div>
+                  <h4 className="font-bold text-slate-700 flex items-center text-sm mb-4">
+                    <div className="bg-green-100 p-1.5 rounded-lg mr-2">
+                      <svg viewBox="0 0 24 24" className="text-green-600 w-4 h-4" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
                       </svg>
                     </div>
+                    Pré-visualização WhatsApp
+                  </h4>
+
+                  <div className="relative">
+                    {/* Chat Bubble decoration */}
+                    <div className="absolute -left-2 top-0 w-3 h-3 bg-white rotate-45 transform origin-top-right"></div>
+
+                    <div className="bg-white rounded-2xl rounded-tl-none shadow-sm p-4 max-w-full sm:max-w-[90%] whitespace-pre-wrap text-sm break-words relative border-l-4 border-green-500/20">
+                      {quickPostData.image && (
+                        <div className="mb-3 rounded-lg overflow-hidden border border-slate-100 shadow-inner">
+                          <img src={quickPostData.image} alt="" className="w-full h-48 object-contain bg-white" />
+                        </div>
+                      )}
+                      <div className="text-slate-800 leading-relaxed font-normal">
+                        {generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product)}
+                      </div>
+                      <div className="flex justify-end items-center gap-1 mt-2">
+                        <p className="text-[10px] text-slate-400 font-medium">12:45</p>
+                        <div className="flex">
+                          <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-blue-500" fill="currentColor">
+                            <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                          </svg>
+                          <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-blue-500 -ml-2" fill="currentColor">
+                            <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 flex gap-2">
+
+                  <div className="mt-5 flex gap-3">
                     <button
                       onClick={() => {
                         const text = generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product);
                         navigator.clipboard.writeText(text);
+                        alert('Copiado para a área de transferência!');
                       }}
-                      className="flex-1 text-sm bg-slate-600 text-white py-2.5 rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                      className="flex-1 text-sm bg-white text-slate-700 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2 font-bold shadow-sm"
                     >
-                      <Copy size={14} /> Copiar
+                      <Copy size={16} /> Copiar
                     </button>
                     <button
                       onClick={() => {
@@ -750,38 +776,44 @@ export const Products: React.FC = () => {
                         const encodedText = encodeURIComponent(text);
                         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
                       }}
-                      className="flex-1 text-sm bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                      className="flex-1 text-sm bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2 font-bold shadow-lg shadow-green-500/20"
                     >
-                      <Send size={14} /> WhatsApp
+                      <Send size={16} /> WhatsApp
                     </button>
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Save Footer */}
-          {quickPostData && (
-            <div className="p-5 border-t border-slate-100 bg-slate-50">
-              <button
-                onClick={handleQuickPostSave}
-                disabled={quickPostSaving || quickPostSaved}
-                className={`w-full px-4 py-3 rounded-lg font-medium flex items-center justify-center transition-all
-                    ${quickPostSaved
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'}
-                    disabled:opacity-70`}
-              >
-                {quickPostSaving ? (
-                  <><Loader2 className="animate-spin mr-2" size={18} /> Salvando...</>
-                ) : quickPostSaved ? (
-                  <><CheckCircle2 className="mr-2" size={18} /> Salvo em Meus Produtos!</>
-                ) : (
-                  <><Save className="mr-2" size={18} /> Salvar em Meus Produtos</>
-                )}
-              </button>
-            </div>
-          )}
+            {/* Save Footer - Moved inside the modal container */}
+            {quickPostData && (
+              <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
+                <button
+                  onClick={resetQuickPost}
+                  className="px-4 py-3 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+                >
+                  Novo Link
+                </button>
+                <button
+                  onClick={handleQuickPostSave}
+                  disabled={quickPostSaving || quickPostSaved}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold flex items-center justify-center transition-all transform hover:scale-[1.02] active:scale-[0.98]
+                      ${quickPostSaved
+                      ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-200 cursor-default'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/30'}
+                      disabled:opacity-70`}
+                >
+                  {quickPostSaving ? (
+                    <><Loader2 className="animate-spin mr-2" size={20} /> Salvando...</>
+                  ) : quickPostSaved ? (
+                    <><CheckCircle2 className="mr-2" size={20} /> Produto Salvo!</>
+                  ) : (
+                    <><Save className="mr-2" size={20} /> Salvar em Meus Produtos</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
