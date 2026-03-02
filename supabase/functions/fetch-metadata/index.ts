@@ -34,11 +34,11 @@ async function callShopeeGraphQL(appId: string, secret: string, payload: string)
 }
 
 // Convert a raw Shopee URL into a proper short affiliate link
-async function convertToShortLink(appId: string, secret: string, originUrl: string, subId: string = ''): Promise<string | null> {
+async function convertToShortLink(appId: string, secret: string, originUrl: string): Promise<string | null> {
     try {
         const payload = JSON.stringify({
             query: `mutation GenerateShortLink($input: GenerateShortLinkInput!) { generateShortLink(input: $input) { shortLink } }`,
-            variables: { input: { originUrl, subId } }
+            variables: { input: { originUrl } }
         });
         const result = await callShopeeGraphQL(appId, secret, payload);
         return result?.data?.generateShortLink?.shortLink || null;
@@ -80,7 +80,6 @@ Deno.serve(async (req: Request) => {
                 const shopeeConfig = row?.settings?.integrations?.find(i => i.id === 'shopee');
                 const appId = shopeeConfig?.credentials?.partnerId;
                 const secret = shopeeConfig?.credentials?.apiKey;
-                const subId = shopeeConfig?.credentials?.subId || '';
 
                 if (appId && secret && shopeeConfig.isEnabled) {
                     // 1. Fetch metadata (price, title, image)
@@ -106,14 +105,14 @@ Deno.serve(async (req: Request) => {
 
                         // 2. Generate tracked short link
                         const rawProductUrl = `https://shopee.com.br/product/${shopeeIds.shopId}/${shopeeIds.itemId}`;
-                        const shortLink = await convertToShortLink(appId, secret, rawProductUrl, subId);
+                        const shortLink = await convertToShortLink(appId, secret, rawProductUrl);
                         if (shortLink) {
                             finalUrl = shortLink;
-                            console.log(`Shopee Short Link Generated for Manual Import (subId: ${subId}): ${shortLink}`);
+                            console.log(`Shopee Short Link Generated for Manual Import: ${shortLink}`);
                         } else {
                             // Fallback: use standard Shopee UTM parameters if short link fails
                             const trackingId = appId.startsWith('an_') ? appId : `an_${appId}`;
-                            finalUrl = `${rawProductUrl}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates${subId ? `&utm_term=${subId}` : ''}`;
+                            finalUrl = `${rawProductUrl}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates`;
                         }
                     }
                 }
