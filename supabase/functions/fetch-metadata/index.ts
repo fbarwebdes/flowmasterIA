@@ -105,31 +105,28 @@ Deno.serve(async (req: Request) => {
         }
 
         // --- MERCADO LIVRE SOCIAL PROFILE HANDLING ---
-        // Some meli.la links go to a social page. We try to find the actual product link.
         if (finalUrl.includes('meli.la') || finalUrl.includes('mercadolivre.com.br/social/')) {
             try {
                 const socialRes = await fetch(finalUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1' }
                 });
                 const socialHtml = await socialRes.text();
-                // Find "Ir para o produto" link
                 const matchLink = socialHtml.match(/href="([^"]+)"[^>]*>Ir para produto<\/a>/i) ||
                     socialHtml.match(/class="[^"]*poly-component__link--action-link[^"]*"[^>]*href="([^"]+)"/i);
                 if (matchLink) {
-                    finalUrl = matchLink[1].split('?')[0]; // Clean up tracking
+                    finalUrl = matchLink[1].split('?')[0];
                     console.log('Redirecting to real ML product URL:', finalUrl);
                 }
             } catch (e) {
-                console.warn('ML Social redirect failed, using original URL');
+                console.warn('ML Social redirect failed');
             }
         }
 
-        // --- GENERIC SCRAPING (for Amazon, Mercado Livre, etc.) ---
+        // --- GENERIC SCRAPING ---
         const response = await fetch(finalUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
             },
             redirect: 'follow',
         });
@@ -149,21 +146,31 @@ Deno.serve(async (req: Request) => {
 
         let title = apiTitle || getMeta('og:title') || getMeta('twitter:title') || getMeta('title') || '';
         if (!title || title.length < 5) {
-            const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+            const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i) || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
             if (tag) title = tag[1].trim();
         }
 
-        // Clean title (remove store names)
-        title = title.replace(/\s*[-|:]\s*(Amazon|Mercado Livre|Shopee|Meli).*$/i, '').trim();
+        // Clean title
+        title = title.replace(/\s*[-|:]\s*(Amazon|Mercado Livre|Shopee|Meli|Aliexpress).*$/i, '').trim();
 
         let image = apiImage || getMeta('og:image') || getMeta('twitter:image') || '';
         let price = apiPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
 
-        // Specialized price parsing for Mercado Livre if meta tags fail
+        // Specialized price parsing for ML and Amazon
         if (!price || price === '0' || price === '0.00') {
+            // ML selectors
             const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i) ||
-                html.match(/class="andes-visual-price__amount">([\d.,]+)<\/span>/i);
+                html.match(/class="andes-visual-price__amount">([\d.,]+)<\/span>/i) ||
+                html.match(/itemprop="price" content="([\d.,]+)"/i);
             if (mlMatch) price = mlMatch[1];
+
+            // Amazon selectors
+            if (!price) {
+                const amzMatch = html.match(/id="priceblock_ourprice"[^>]*>R\$\s*([\d.,]+)/i) ||
+                    html.match(/id="priceblock_dealprice"[^>]*>R\$\s*([\d.,]+)/i) ||
+                    html.match(/class="a-offscreen">R\$\s*([\d.,]+)/i);
+                if (amzMatch) price = amzMatch[1];
+            }
         }
 
         if (price) {
