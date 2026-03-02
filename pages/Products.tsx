@@ -213,8 +213,6 @@ export const Products: React.FC = () => {
     }
   };
 
-
-
   const handleDeleteProduct = async (product: Product) => {
     if (confirm(`Deseja realmente excluir "${product.title}"?`)) {
       try {
@@ -263,9 +261,6 @@ export const Products: React.FC = () => {
     const matchesPlatform = platformFilter === 'all' || p.platform === platformFilter;
     return matchesText && matchesPlatform;
   });
-
-
-
 
   // Helper for PT-BR currency
   const formatCurrency = (value: number) =>
@@ -724,12 +719,20 @@ export const Products: React.FC = () => {
                     </svg>
                     Pré-visualização WhatsApp
                   </h4>
-                  <div className="bg-white rounded-lg shadow-sm p-3 max-w-xs ml-auto whitespace-pre-wrap text-sm">
+                  <div className="bg-white rounded-2xl rounded-tr-none shadow-md p-3.5 max-w-[85%] sm:max-w-xs ml-auto whitespace-pre-wrap text-sm break-words relative">
                     {quickPostData.image && (
-                      <img src={quickPostData.image} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
+                      <img src={quickPostData.image} alt="" className="w-full h-40 object-cover rounded-xl mb-3 shadow-sm border border-slate-100" />
                     )}
-                    {generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product)}
-                    <p className="text-[10px] text-slate-400 text-right mt-1">agora</p>
+                    <div className="text-slate-800 leading-relaxed font-normal">
+                      {generateFromTemplateText({ ...quickPostData, price: getQuickPostPrice(), affiliate_link: quickPostLink } as Product)}
+                    </div>
+                    <div className="flex justify-end items-center gap-1 mt-1">
+                      <p className="text-[10px] text-slate-400">agora</p>
+                      <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-blue-500" fill="currentColor">
+                        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                      </svg>
+                    </div>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
@@ -881,17 +884,27 @@ export const Products: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-                <img src={previewProduct.image} alt="" className="w-14 h-14 rounded-lg object-cover" />
-                <div>
-                  <p className="font-medium text-slate-900">{previewProduct.title}</p>
-                  <p className="text-lg text-emerald-600 font-bold">{formatCurrency(previewProduct.price)}</p>
+            <div className="p-6 overflow-y-auto max-h-[65vh] space-y-6">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
+                <img src={previewProduct.image} alt="" className="w-16 h-16 rounded-xl object-cover shadow-sm border border-white" />
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 line-clamp-2 leading-tight mb-1">{previewProduct.title}</p>
+                  <p className="text-xl text-emerald-600 font-extrabold">{formatCurrency(previewProduct.price)}</p>
                 </div>
               </div>
-              <div className="bg-[#e5ddd5] p-4 rounded-lg">
-                <div className="bg-white p-4 rounded-lg shadow-sm text-sm text-gray-800 whitespace-pre-wrap">
-                  {generateFromTemplateText(previewProduct)}
+
+              <div className="bg-[#e5ddd5] p-5 rounded-2xl border border-slate-200/50 shadow-inner relative overflow-hidden">
+                {/* WhatsApp Chat Background Simulation */}
+                <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"></div>
+
+                <div className="bg-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm text-slate-800 whitespace-pre-wrap break-words max-w-[90%] ml-auto relative z-10 border-l-4 border-emerald-500/20">
+                  <div className="leading-relaxed">
+                    {generateFromTemplateText(previewProduct)}
+                  </div>
+                  <div className="flex justify-end items-center gap-1 mt-1 text-slate-400">
+                    <span className="text-[10px]">agora</span>
+                    <CheckCircle2 size={12} className="text-blue-500" />
+                  </div>
                 </div>
               </div>
             </div>
