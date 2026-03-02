@@ -481,27 +481,20 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
       }
     }
 
-    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/fetch-metadata`;
     const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || supabaseKey;
 
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ url: link, userId: session?.user?.id }),
+    const { data, error } = await supabase.functions.invoke('fetch-metadata', {
+      body: { url: link, userId: session?.user?.id }
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('fetch-metadata HTTP Error:', response.status, text);
-      throw new Error(`Edge Function retornou erro ${response.status}`);
+    if (error) {
+      console.error('fetch-metadata Error:', error);
+      throw new Error(error.message || `Erro ao buscar dados (Status ${error.status || '?'})`);
     }
 
-    const data = await response.json();
+    if (!data) {
+      throw new Error('A função não retornou dados válidos.');
+    }
     let { title, price, image, platform } = data;
 
     return {
