@@ -508,14 +508,10 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
       image: image || 'https://via.placeholder.com/200?text=No+Image',
       platform: platform || 'Other'
     };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Link Fetch Error:', err);
-    return {
-      title: '',
-      price: 0,
-      image: '',
-      platform: 'Other'
-    };
+    // Pass through the actual error message
+    throw new Error(err.message || 'Falha ao buscar dados do produto.');
   }
 };
 

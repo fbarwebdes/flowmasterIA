@@ -122,13 +122,40 @@ Deno.serve(async (req: Request) => {
             }
         }
 
+        // --- SEARCH FOR MERCADO LIVRE SOCIAL LINK ---
+        // If the URL is a meli.la or social profile, we need to find the "Ir para produto" link
+        if (url.includes('meli.la') || url.includes('mercadolivre.com.br/social/')) {
+            console.log('Detected Mercado Livre Social/Short link, fetching redirect...');
+            const socialRes = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+                },
+                redirect: 'follow',
+            });
+            const socialHtml = await socialRes.text();
+            // Look for the "Ir para produto" link
+            const match = socialHtml.match(/class="[^"]*poly-component__link--action-link[^"]*"[^>]*href="([^"]+)"/i) ||
+                socialHtml.match(/href="([^"]+)"[^>]*class="[^"]*poly-component__link--action-link/i);
+            if (match && match[1]) {
+                const realUrl = match[1].split('?')[0]; // Clean up tracking if possible
+                console.log(`Found real product URL: ${realUrl}`);
+                finalUrl = realUrl;
+            }
+        }
+
         const response = await fetch(finalUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
             },
             redirect: 'follow',
         });
+
+        if (response.status === 403) {
+            throw new Error('O Mercado Livre bloqueou o acesso automático (Erro 403). Tente usar o link direto do produto ou preenchimento manual.');
+        }
+
         finalUrl = response.url || finalUrl;
         const html = await response.text();
 
