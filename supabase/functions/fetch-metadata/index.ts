@@ -129,17 +129,23 @@ Deno.serve(async (req: Request) => {
             const socialRes = await fetch(url, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 },
                 redirect: 'follow',
             });
             const socialHtml = await socialRes.text();
-            // Look for the "Ir para produto" link
+
+            // Look for the "Ir para produto" link by class or common patterns in Social pages
             const match = socialHtml.match(/class="[^"]*poly-component__link--action-link[^"]*"[^>]*href="([^"]+)"/i) ||
-                socialHtml.match(/href="([^"]+)"[^>]*class="[^"]*poly-component__link--action-link/i);
+                socialHtml.match(/href="([^"]+)"[^>]*class="[^"]*poly-component__link--action-link/i) ||
+                socialHtml.match(/href="([^"]+)"[^>]*>Ir para produto<\/a>/i);
+
             if (match && match[1]) {
                 const realUrl = match[1].split('?')[0]; // Clean up tracking if possible
                 console.log(`Found real product URL: ${realUrl}`);
                 finalUrl = realUrl;
+            } else {
+                console.warn('Could not find redirect link on ML Social page, staying with original URL.');
             }
         }
 
