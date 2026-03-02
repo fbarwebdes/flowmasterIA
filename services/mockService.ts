@@ -1,5 +1,5 @@
 import { Product, DashboardStats, Schedule, AppSettings, IntegrationConfig, AutomationConfig, DispatchRecord } from '../types';
-import { supabase } from './supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from './supabase';
 
 const SETTINGS_KEY = 'flowmaster_settings';
 
@@ -482,19 +482,25 @@ export const extractFromLink = async (link: string): Promise<{ title: string; pr
     }
 
     const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || supabaseAnonKey;
 
-    const { data, error } = await supabase.functions.invoke('fetch-metadata', {
-      body: { url: link, userId: session?.user?.id }
+    const response = await fetch(`${supabaseUrl}/functions/v1/fetch-metadata`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ url: link, userId: session?.user?.id }),
     });
 
-    if (error) {
-      console.error('fetch-metadata Error:', error);
-      throw new Error(error.message || `Erro ao buscar dados (Status ${error.status || '?'})`);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('fetch-metadata HTTP Error:', response.status, text);
+      throw new Error(`Edge Function retornou erro ${response.status}: ${text}`);
     }
 
-    if (!data) {
-      throw new Error('A função não retornou dados válidos.');
-    }
+    const data = await response.json();
     let { title, price, image, platform } = data;
 
     return {

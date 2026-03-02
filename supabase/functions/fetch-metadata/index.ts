@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 // Generate SHA256 signature for Shopee Affiliate API
@@ -49,7 +50,10 @@ async function convertToShortLink(appId: string, secret: string, originUrl: stri
 }
 
 Deno.serve(async (req: Request) => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
 
     try {
         const { url, userId } = await req.json();
@@ -126,7 +130,7 @@ Deno.serve(async (req: Request) => {
         const response = await fetch(finalUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             },
             redirect: 'follow',
         });
@@ -157,18 +161,17 @@ Deno.serve(async (req: Request) => {
         let price = apiPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
 
         // Specialized price parsing for ML and Amazon
-        if (!price || price === '0' || price === '0.00') {
-            // ML selectors
+        if (!price || price === '0' || price === '0.00' || price === '') {
             const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i) ||
                 html.match(/class="andes-visual-price__amount">([\d.,]+)<\/span>/i) ||
                 html.match(/itemprop="price" content="([\d.,]+)"/i);
             if (mlMatch) price = mlMatch[1];
 
-            // Amazon selectors
             if (!price) {
                 const amzMatch = html.match(/id="priceblock_ourprice"[^>]*>R\$\s*([\d.,]+)/i) ||
                     html.match(/id="priceblock_dealprice"[^>]*>R\$\s*([\d.,]+)/i) ||
-                    html.match(/class="a-offscreen">R\$\s*([\d.,]+)/i);
+                    html.match(/class="a-offscreen">R\$\s*([\d.,]+)/i) ||
+                    html.match(/class="a-price-whole">([\d.,]+)/i);
                 if (amzMatch) price = amzMatch[1];
             }
         }
@@ -199,6 +202,7 @@ Deno.serve(async (req: Request) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     } catch (error: any) {
+        console.error('Edge Function Error:', error.message);
         return new Response(JSON.stringify({ error: error.message }), { headers: corsHeaders, status: 400 });
     }
 });
