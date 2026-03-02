@@ -53,10 +53,20 @@ async function convertToShortLink(appId: string, secret: string, originUrl: stri
 function getMeta(html: string, prop: string): string | null {
     const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
     const m1 = html.match(r1);
-    if (m1) return m1[1];
+    const content = m1 ? m1[1] : null;
+    if (content) return decodeHtmlEntities(content);
+
     const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
     const m2 = html.match(r2);
-    return m2 ? m2[1] : null;
+    return m2 ? decodeHtmlEntities(m2[1]) : null;
+}
+
+function normalizeImageUrl(url: string | null): string | null {
+    if (!url) return null;
+    let normalized = decodeHtmlEntities(url).trim();
+    if (normalized.startsWith('//')) normalized = `https:${normalized}`;
+    if (!normalized.startsWith('http')) return null;
+    return normalized;
 }
 
 function getNordicData(html: string): { title?: string; price?: number; image?: string } | null {
@@ -84,7 +94,7 @@ function getNordicData(html: string): { title?: string; price?: number; image?: 
                     return {
                         title: title || undefined,
                         price: priceValue ? parseFloat(priceValue) : undefined,
-                        image: imageId ? `https://http2.mlstatic.com/D_Q_NP_2X_${imageId}-O.webp` : undefined
+                        image: normalizeImageUrl(`https://http2.mlstatic.com/D_Q_NP_2X_${imageId}-O.webp`) || undefined
                     };
                 }
             }
@@ -123,7 +133,7 @@ function extractFromSocialPageHTML(html: string): { title?: string; price?: numb
         return {
             title: titleMatch ? titleMatch[1].trim() : undefined,
             price,
-            image: imageMatch ? imageMatch[1] : undefined,
+            image: normalizeImageUrl(imageMatch ? imageMatch[1] : null) || undefined,
         };
     }
     return null;
@@ -252,7 +262,7 @@ Deno.serve(async (req: Request) => {
                     const productHtml = await productResponse.text();
 
                     // Definitive metadata from actual product page - THIS TAKES PRECEDENCE
-                    const productOgImage = getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image');
+                    const productOgImage = normalizeImageUrl(getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image'));
                     if (productOgImage) {
                         console.log(`[fetch-metadata] Found definitive image ON PRODUCT PAGE: ${productOgImage}`);
                         image = productOgImage; // OVERWRITE whatever we had from social page
@@ -288,8 +298,9 @@ Deno.serve(async (req: Request) => {
             if (!image) {
                 const imgMatch = html.match(/(?:data-src|src)="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i);
                 if (imgMatch) {
-                    const isBanner = imgMatch[1].includes('997606');
-                    if (!isBanner) image = imgMatch[1];
+                    const normalizedImg = normalizeImageUrl(imgMatch[1]);
+                    const isBanner = normalizedImg?.includes('997606');
+                    if (!isBanner) image = normalizedImg;
                 }
             }
 
@@ -313,10 +324,10 @@ Deno.serve(async (req: Request) => {
         }
         title = title.replace(/\s*[-|:]\s*(Amazon|Mercado Livre|Shopee|Meli|Aliexpress).*$/i, '').trim();
 
-        let image = apiImage || getMeta(html, 'og:image') || getMeta(html, 'twitter:image') || '';
+        let image = apiImage || normalizeImageUrl(getMeta(html, 'og:image') || getMeta(html, 'twitter:image')) || '';
         if (!image) {
             const amzImg = html.match(/(https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9._%-]+\.(?:jpg|png|webp))/i);
-            if (amzImg) image = amzImg[1];
+            if (amzImg) image = normalizeImageUrl(amzImg[1]) || '';
         }
 
         let jsonLdPrice: string | null = null;
