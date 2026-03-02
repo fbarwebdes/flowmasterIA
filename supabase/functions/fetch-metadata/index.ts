@@ -66,49 +66,14 @@ function decodeHtmlEntities(text: string) {
         .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
-// Extract product data from ML Social page's NORDIC_RENDERING_CTX or inline JSON
-function extractFromNordic(html: string): { title?: string; price?: number; image?: string } | null {
-    try {
-        // Look for NORDIC_RENDERING_CTX which contains product data as JSON
-        const nordicMatch = html.match(/NORDIC_RENDERING_CTX\s*=\s*(\{[\s\S]*?\});\s*<\/script>/i);
-        if (nordicMatch) {
-            const data = JSON.parse(nordicMatch[1]);
-            // The structure varies, but try common paths
-            const items = data?.items || data?.components;
-            if (items) {
-                for (const key of Object.keys(items)) {
-                    const item = items[key];
-                    if (item?.title || item?.name) {
-                        return {
-                            title: item.title || item.name,
-                            price: item.price?.amount || item.price?.value || item.price,
-                            image: item.thumbnail || item.picture || item.image,
-                        };
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        console.log('[nordic] Parse error:', e.message);
-    }
-    return null;
-}
-
-// Extract product info from ML social page HTML elements
 function extractFromSocialPageHTML(html: string): { title?: string; price?: number; image?: string } | null {
-    // Try to get the first product's info via structured HTML patterns
-    // ML social pages have product cards with specific patterns
-
-    // Title from poly-card or similar components
     const titleMatch = html.match(/class="[^"]*poly-component__title[^"]*"[^>]*>\s*([^<]+)/i) ||
         html.match(/class="[^"]*poly-card__title[^"]*"[^>]*>\s*([^<]+)/i) ||
         html.match(/class="[^"]*ui-search-item__title[^"]*"[^>]*>\s*([^<]+)/i);
 
-    // Price - look for andes-money-amount patterns
     const priceMatch = html.match(/class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>\s*(\d[\d.]*)/i);
     const centMatch = html.match(/class="[^"]*andes-money-amount__cents[^"]*"[^>]*>\s*(\d+)/i);
 
-    // Image - look for the first product image
     const imageMatch = html.match(/data-src="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i) ||
         html.match(/src="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i);
 
@@ -128,14 +93,10 @@ function extractFromSocialPageHTML(html: string): { title?: string; price?: numb
     return null;
 }
 
-// Extract price from NORDIC_RENDERING_CTX JSON pattern
 function extractPriceFromNordic(html: string): number | null {
     try {
-        // Pattern: "current_price":{"value":74.0,...}
         const match = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i);
         if (match) return parseFloat(match[1]);
-
-        // Pattern: "price":74.0 or "amount":74.0
         const match2 = html.match(/"(?:price|amount)"\s*:\s*([\d.]+)/);
         if (match2) {
             const val = parseFloat(match2[1]);
@@ -203,73 +164,61 @@ Deno.serve(async (req: Request) => {
         const html = await response.text();
 
         console.log(`[fetch-metadata] Final URL: ${finalUrl} | HTML: ${html.length} bytes`);
-        console.log(`[fetch-metadata] Is social page: ${finalUrl.includes('/social/')}`);
 
         // ===================== ML SOCIAL PAGE HANDLING =====================
-        // meli.la links redirect to /social/ profile pages.
-        // These pages contain product listings with links, images, titles, and prices in the HTML.
         if (finalUrl.includes('/social/') || finalUrl.includes('mercadolivre.com.br/social')) {
-            console.log('[fetch-metadata] ML Social page detected, extracting product data directly from HTML...');
+            console.log('[fetch-metadata] ML Social page detected, extracting product data...');
 
             let title: string | null = null;
             let price: number | null = null;
             let image: string | null = null;
 
-            // Strategy 1: Extract from NORDIC_RENDERING_CTX
+            // Strategy 1: Extract from social page price JSON
             const nordicPrice = extractPriceFromNordic(html);
-            if (nordicPrice) {
-                price = nordicPrice;
-                console.log(`[fetch-metadata] Nordic price: ${price}`);
-            }
+            if (nordicPrice) price = nordicPrice;
 
             // Strategy 2: Extract from social page HTML elements
             const socialData = extractFromSocialPageHTML(html);
             if (socialData) {
-                title = socialData.title || null;
+                if (!title) title = socialData.title || null;
                 if (!price && socialData.price) price = socialData.price;
-                image = socialData.image || null;
-                console.log(`[fetch-metadata] Social HTML extraction: title="${title}" price=${price} image=${image ? 'YES' : 'NO'}`);
+                if (!image) image = socialData.image || null;
             }
 
-            // Strategy 3: Try to get first product link and fetch its OG data
-            if (!title || !image) {
-                const productLinkMatch = html.match(/href="(https?:\/\/produto\.mercadolivre\.com\.br\/MLB[^"]+)"/i);
-                if (productLinkMatch) {
-                    const productUrl = productLinkMatch[1].split('?')[0];
-                    console.log(`[fetch-metadata] Found product URL, fetching OG data: ${productUrl}`);
-                    try {
-                        const productResponse = await fetch(productUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
-                        const productHtml = await productResponse.text();
-                        console.log(`[fetch-metadata] Product page: ${productHtml.length} bytes`);
+            // Strategy 3: ALWAYS fetch the real product page for og:image (social page images are generic/wrong)
+            const productLinkMatch = html.match(/href="(https?:\/\/produto\.mercadolivre\.com\.br\/MLB[^"]+)"/i);
+            if (productLinkMatch) {
+                const productUrl = productLinkMatch[1].split('?')[0];
+                console.log(`[fetch-metadata] Fetching product page for definitive data: ${productUrl}`);
+                try {
+                    const productResponse = await fetch(productUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
+                    const productHtml = await productResponse.text();
 
-                        if (!title) {
-                            title = getMeta(productHtml, 'og:title') || '';
-                            if (title) title = title.replace(/\s*[-|:]\s*(Mercado Livre|MercadoLivre).*$/i, '').trim();
-                            if (!title) {
-                                const h1 = productHtml.match(/<h1[^>]*>([^<]{5,})<\/h1>/i);
-                                if (h1) title = h1[1].trim();
-                            }
-                        }
-                        if (!image) {
-                            image = getMeta(productHtml, 'og:image') || null;
-                        }
-                        if (!price) {
-                            const pprice = extractPriceFromNordic(productHtml);
-                            if (pprice) price = pprice;
-                            if (!price) {
-                                const metaPrice = getMeta(productHtml, 'product:price:amount');
-                                if (metaPrice) price = parseFloat(metaPrice);
-                            }
-                        }
+                    // Definitive image from product page
+                    const productOgImage = getMeta(productHtml, 'og:image');
+                    if (productOgImage) image = productOgImage;
 
-                        console.log(`[fetch-metadata] After product page: title="${title}" price=${price} image=${image ? 'YES' : 'NO'}`);
-                    } catch (e) {
-                        console.error(`[fetch-metadata] Product page fetch failed: ${e.message}`);
+                    // Definitive title if not already found or if it's too short
+                    const productOgTitle = getMeta(productHtml, 'og:title');
+                    if (productOgTitle && (!title || title.length < 5)) {
+                        title = productOgTitle.replace(/\s*[-|:]\s*(Mercado Livre|MercadoLivre).*$/i, '').trim();
                     }
+
+                    // Price from product page
+                    if (!price) {
+                        const pprice = extractPriceFromNordic(productHtml);
+                        if (pprice) price = pprice;
+                        else {
+                            const metaPrice = getMeta(productHtml, 'product:price:amount');
+                            if (metaPrice) price = parseFloat(metaPrice);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`[fetch-metadata] Product page fetch error: ${e.message}`);
                 }
             }
 
-            // Strategy 4: Fallback - generic R$ price from social page
+            // Strategy 4: Fallback R$ price
             if (!price) {
                 const priceRegex = /R\$\s?([\d.]+,\d{1,2})/gi;
                 const matches = [...html.matchAll(priceRegex)];
@@ -279,13 +228,11 @@ Deno.serve(async (req: Request) => {
                 }
             }
 
-            // Strategy 5: Fallback image from ML static CDN
+            // Strategy 5: Fallback image from CDN
             if (!image) {
                 const imgMatch = html.match(/(?:data-src|src)="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i);
                 if (imgMatch) image = imgMatch[1];
             }
-
-            console.log(`[fetch-metadata] FINAL ML Social result: title="${title}" price=${price} image=${image ? 'YES' : 'NO'}`);
 
             return new Response(
                 JSON.stringify({
@@ -293,15 +240,13 @@ Deno.serve(async (req: Request) => {
                     image: image || '',
                     price: price || null,
                     platform: 'Mercado Livre',
-                    finalUrl: url, // Keep the original meli.la link for affiliate tracking
+                    finalUrl: url,
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
             );
         }
 
         // ===================== GENERIC EXTRACTION =====================
-        // For direct ML product pages, Amazon, etc.
-
         let title = apiTitle || getMeta(html, 'og:title') || getMeta(html, 'twitter:title') || getMeta(html, 'title') || '';
         if (!title || title.length < 5) {
             const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -315,7 +260,6 @@ Deno.serve(async (req: Request) => {
             if (amzImg) image = amzImg[1];
         }
 
-        // Price: JSON-LD
         let jsonLdPrice: string | null = null;
         try {
             const scripts = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
@@ -338,13 +282,11 @@ Deno.serve(async (req: Request) => {
 
         let price: string | null = apiPrice || jsonLdPrice || getMeta(html, 'product:price:amount') || getMeta(html, 'og:price:amount') || null;
 
-        // ML NORDIC price
         if (!price || price === '0' || price === '0.00') {
-            const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i);
-            if (mlMatch) price = mlMatch[1];
+            const mlPrice = extractPriceFromNordic(html);
+            if (mlPrice) price = String(mlPrice);
         }
 
-        // Generic R$ fallback
         if (!price || price === '0' || price === '0.00') {
             const priceRegex = /R\$\s?([\d.]+,\d{1,2})/gi;
             const matches = [...html.matchAll(priceRegex)];
