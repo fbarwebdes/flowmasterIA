@@ -186,7 +186,10 @@ Deno.serve(async (req: Request) => {
             }
 
             // Strategy 3: ALWAYS fetch the real product page for og:image (social page images are generic/wrong)
-            const productLinkMatch = html.match(/href="(https?:\/\/produto\.mercadolivre\.com\.br\/MLB[^"]+)"/i);
+            // Look for links to produto.mercadolivre.com.br or mercadolivre.com.br/p/
+            const productLinkRegex = /href="(https?:\/\/(?:produto\.)?mercadolivre\.com\.br\/(?:p\/|MLB-)[^"]+)"/i;
+            const productLinkMatch = html.match(productLinkRegex) || html.match(/href="(https?:\/\/[^"]+\/MLB-[^"]+)"/i);
+
             if (productLinkMatch) {
                 const productUrl = productLinkMatch[1].split('?')[0];
                 console.log(`[fetch-metadata] Fetching product page for definitive data: ${productUrl}`);
@@ -194,28 +197,31 @@ Deno.serve(async (req: Request) => {
                     const productResponse = await fetch(productUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
                     const productHtml = await productResponse.text();
 
-                    // Definitive image from product page
-                    const productOgImage = getMeta(productHtml, 'og:image');
-                    if (productOgImage) image = productOgImage;
+                    // Definitive image from product page - THIS IS THE FIX
+                    const productOgImage = getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image');
+                    if (productOgImage) {
+                        console.log(`[fetch-metadata] Found definitive image on product page: ${productOgImage}`);
+                        image = productOgImage;
+                    }
 
-                    // Definitive title if not already found or if it's too short
+                    // Definitive title
                     const productOgTitle = getMeta(productHtml, 'og:title');
-                    if (productOgTitle && (!title || title.length < 5)) {
+                    if (productOgTitle) {
                         title = productOgTitle.replace(/\s*[-|:]\s*(Mercado Livre|MercadoLivre).*$/i, '').trim();
                     }
 
-                    // Price from product page
-                    if (!price) {
-                        const pprice = extractPriceFromNordic(productHtml);
-                        if (pprice) price = pprice;
-                        else {
-                            const metaPrice = getMeta(productHtml, 'product:price:amount');
-                            if (metaPrice) price = parseFloat(metaPrice);
-                        }
+                    // Definitive price
+                    const pprice = extractPriceFromNordic(productHtml);
+                    if (pprice) price = pprice;
+                    else {
+                        const metaPrice = getMeta(productHtml, 'product:price:amount') || getMeta(productHtml, 'og:price:amount');
+                        if (metaPrice) price = parseFloat(metaPrice);
                     }
                 } catch (e) {
                     console.error(`[fetch-metadata] Product page fetch error: ${e.message}`);
                 }
+            } else {
+                console.log('[fetch-metadata] Could not find a specific product link on the social page.');
             }
 
             // Strategy 4: Fallback R$ price
