@@ -111,8 +111,9 @@ Deno.serve(async (req: Request) => {
                             finalUrl = shortLink;
                             console.log(`Shopee Short Link Generated for Manual Import (subId: ${subId}): ${shortLink}`);
                         } else {
-                            // Link as fallback with affiliate_id and sub_id
-                            finalUrl = `${rawProductUrl}?affiliate_id=${appId}${subId ? `&sub_id=${subId}` : ''}`;
+                            // Fallback: use standard Shopee UTM parameters if short link fails
+                            const trackingId = appId.startsWith('an_') ? appId : `an_${appId}`;
+                            finalUrl = `${rawProductUrl}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates${subId ? `&utm_term=${subId}` : ''}`;
                         }
                     }
                 }

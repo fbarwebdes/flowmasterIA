@@ -229,8 +229,10 @@ Deno.serve(async (req: Request) => {
                 if (shortLink) {
                     product.product_link = shortLink;
                 } else {
-                    // Fallback: append affiliate_id and sub_id if short link fails
-                    product.product_link = `${product.product_link}?affiliate_id=${appId}${subId ? `&sub_id=${subId}` : ''}`;
+                    // Fallback: use standard Shopee UTM parameters if short link fails
+                    // The affiliate_id should be prefixed with 'an_' if it's a number
+                    const trackingId = appId.startsWith('an_') ? appId : `an_${appId}`;
+                    product.product_link = `${product.product_link}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates${subId ? `&utm_term=${subId}` : ''}`;
                 }
                 return product;
             });
