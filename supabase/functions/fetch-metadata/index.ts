@@ -151,9 +151,21 @@ Deno.serve(async (req: Request) => {
         };
 
         let title = apiTitle || getMeta('og:title') || getMeta('twitter:title') || getMeta('title') || '';
+
+        // --- SELECTOR FALLBACKS (Mercado Livre & others) ---
+        if (!title || title.length < 5) {
+            // Try common title classes
+            const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+            if (h1Match) title = h1Match[1].replace(/<[^>]+>/g, '').trim();
+        }
+
         if (!title || title.length < 5) {
             const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-            if (tag) title = tag[1].trim().replace(/\s*[-|:]\s*Amazon\.com.*$/i, '').replace(/\s*[-|:]\s*Mercado Livre.*$/i, '').trim();
+            if (tag) title = tag[1].trim()
+                .replace(/\s*[-|:]\s*Amazon\.com.*$/i, '')
+                .replace(/\s*[-|:]\s*Mercado Livre.*$/i, '')
+                .replace(/\s*[-|:]\s*Shopee.*$/i, '')
+                .trim();
         }
 
         let image = apiImage || getMeta('og:image') || getMeta('twitter:image') || '';
@@ -220,7 +232,7 @@ Deno.serve(async (req: Request) => {
         const combined = (url + ' ' + finalUrl).toLowerCase();
         if (combined.includes('shopee')) platform = 'Shopee';
         else if (combined.includes('amazon') || combined.includes('amzn')) platform = 'Amazon';
-        else if (combined.includes('mercadolivre') || combined.includes('mlb-')) platform = 'Mercado Livre';
+        else if (combined.includes('mercadolivre') || combined.includes('mlb-') || combined.includes('meli.la')) platform = 'Mercado Livre';
 
         return new Response(
             JSON.stringify({
