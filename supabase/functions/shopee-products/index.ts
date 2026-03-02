@@ -74,7 +74,7 @@ function getProductOfferListQuery(keyword: string, limit: number) {
 }
 
 // GraphQL mutation to convert a raw Shopee URL into a tracked affiliate short link
-function getGenerateShortLinkMutation(originUrl: string, subId: string = '') {
+function getGenerateShortLinkMutation(originUrl: string) {
     return JSON.stringify({
         query: `
       mutation GenerateShortLink($input: GenerateShortLinkInput!) {
@@ -85,8 +85,7 @@ function getGenerateShortLinkMutation(originUrl: string, subId: string = '') {
     `,
         variables: {
             input: {
-                originUrl: originUrl,
-                subId: subId
+                originUrl: originUrl
             }
         }
     });
@@ -132,11 +131,10 @@ function createReliableSearchLink(keyword: string, affiliateId: string): string 
 async function convertToShortLink(
     appId: string,
     appSecret: string,
-    originUrl: string,
-    subId: string = ''
+    originUrl: string
 ): Promise<string | null> {
     try {
-        const payload = getGenerateShortLinkMutation(originUrl, subId);
+        const payload = getGenerateShortLinkMutation(originUrl);
         const result = await callShopeeGraphQL(appId, appSecret, payload);
         const shortLink = result?.data?.generateShortLink?.shortLink;
         if (shortLink) {
@@ -170,7 +168,7 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-        const { appId, appSecret, subId = '', keyword, limit = 50 } = await req.json();
+        const { appId, appSecret, keyword, limit = 50 } = await req.json();
 
         if (!appId || !appSecret) {
             // Return fallback immediately if no credentials
@@ -225,14 +223,14 @@ Deno.serve(async (req: Request) => {
             // Step 2: Convert all URLs to tracked short links via generateShortLink
             console.log(`Converting ${productsWithRawLinks.length} product links to short affiliate links...`);
             const shortLinkPromises = productsWithRawLinks.map(async (product) => {
-                const shortLink = await convertToShortLink(appId, appSecret, product.product_link, subId);
+                const shortLink = await convertToShortLink(appId, appSecret, product.product_link);
                 if (shortLink) {
                     product.product_link = shortLink;
                 } else {
-                    // Fallback: use standard Shopee UTM parameters if short link fails
-                    // The affiliate_id should be prefixed with 'an_' if it's a number
+                    // Fallback: simplified link - commission is linked to the partnerId in the API session anyway
+                    // but we keep basic UTM for platform compatibility if short link fails
                     const trackingId = appId.startsWith('an_') ? appId : `an_${appId}`;
-                    product.product_link = `${product.product_link}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates${subId ? `&utm_term=${subId}` : ''}`;
+                    product.product_link = `${product.product_link}?utm_source=${trackingId}&mmp_pid=${trackingId}&utm_medium=affiliates`;
                 }
                 return product;
             });

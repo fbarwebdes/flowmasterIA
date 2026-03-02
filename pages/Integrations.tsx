@@ -117,8 +117,7 @@ export const Integrations: React.FC = () => {
                 }
                 const result = await validateShopeeCredentials(
                     config.credentials.partnerId,
-                    config.credentials.apiKey,
-                    config.credentials.subId
+                    config.credentials.apiKey
                 );
                 if (result.valid) {
                     setTestResult({ success: true, message: 'Conexão estabelecida com sucesso! API Ativa.' });
@@ -302,20 +301,6 @@ export const Integrations: React.FC = () => {
                                             <p className="text-xs text-[var(--color-text-muted)] mt-1">Chave secreta gerada no painel Shopee</p>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-[var(--color-text-main)] mb-1">ID de Rastreamento (sub_id/tracking_id)</label>
-                                            <div className="relative">
-                                                <Users className="absolute left-3 top-2.5 text-[var(--color-text-muted)]" size={18} />
-                                                <input
-                                                    type="text"
-                                                    value={getConfig(activeTab).credentials.subId || ''}
-                                                    onChange={(e) => updateIntegration(activeTab, 'subId', e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                                                    placeholder="Ex: whatsapp_vendas"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Opcional. Identifica a origem das vendas no seu painel Shopee.</p>
-                                        </div>
                                     </>
                                 ) : (
                                     <>
