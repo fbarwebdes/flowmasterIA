@@ -59,6 +59,42 @@ function getMeta(html: string, prop: string): string | null {
     return m2 ? m2[1] : null;
 }
 
+function getNordicData(html: string): { title?: string; price?: number; image?: string } | null {
+    try {
+        // Look for NORDIC_RENDERING_CTX in the script tags
+        const match = html.match(/NORDIC_RENDERING_CTX\s*=\s*({[\s\S]*?});/);
+        if (!match) return null;
+
+        const ctx = JSON.parse(match[1]);
+        // The structure can vary, so we try multiple common paths for social pages
+        const state = ctx?.state;
+        if (!state) return null;
+
+        // Path for polycards in social tabs
+        const components = state.tabs_content?.[0]?.components || [];
+        for (const comp of components) {
+            const polycards = comp.recommendation_data?.polycards || [];
+            if (polycards.length > 0) {
+                const pc = polycards[0];
+                const title = pc.components?.find((c: any) => c.id === 'title')?.title?.text;
+                const priceValue = pc.components?.find((c: any) => c.id === 'price')?.price?.value;
+                const imageId = pc.pictures?.pictures?.[0]?.id;
+
+                if (title || priceValue || imageId) {
+                    return {
+                        title: title || undefined,
+                        price: priceValue ? parseFloat(priceValue) : undefined,
+                        image: imageId ? `https://http2.mlstatic.com/D_Q_NP_2X_${imageId}-O.webp` : undefined
+                    };
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[fetch-metadata] Nordic parse error:', e.message);
+    }
+    return null;
+}
+
 function decodeHtmlEntities(text: string) {
     if (!text) return text;
     return text.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -173,55 +209,69 @@ Deno.serve(async (req: Request) => {
             let price: number | null = null;
             let image: string | null = null;
 
-            // Strategy 1: Extract from social page price JSON
-            const nordicPrice = extractPriceFromNordic(html);
-            if (nordicPrice) price = nordicPrice;
+            // Strategy 0: High Priority - Extract from NORDIC_RENDERING_CTX JSON
+            const nordic = getNordicData(html);
+            if (nordic) {
+                console.log('[fetch-metadata] Strategy 0: Data found in Nordic context');
+                if (nordic.title) title = nordic.title;
+                if (nordic.price) price = nordic.price;
+                // Only skip if image is found (banners are NOT in Nordic thumbnails usually)
+                if (nordic.image) image = nordic.image;
+            }
+
+            // Strategy 1: Extract from social page price JSON (legacy fallback)
+            if (!price) {
+                const nordicPrice = extractPriceFromNordic(html);
+                if (nordicPrice) price = nordicPrice;
+            }
 
             // Strategy 2: Extract from social page HTML elements
             const socialData = extractFromSocialPageHTML(html);
             if (socialData) {
                 if (!title) title = socialData.title || null;
                 if (!price && socialData.price) price = socialData.price;
-                if (!image) image = socialData.image || null;
+                if (!image) {
+                    // Exclude the Meli+ banner specifically
+                    const isBanner = socialData.image?.includes('997606') || socialData.image?.includes('POR-APENAS');
+                    if (!isBanner) image = socialData.image || null;
+                }
             }
 
-            // Strategy 3: ALWAYS fetch the real product page for og:image (social page images are generic/wrong)
-            // Look for links to produto.mercadolivre.com.br or mercadolivre.com.br/p/
-            const productLinkRegex = /href="(https?:\/\/(?:produto\.)?mercadolivre\.com\.br\/(?:p\/|MLB-)[^"]+)"/i;
-            const productLinkMatch = html.match(productLinkRegex) || html.match(/href="(https?:\/\/[^"]+\/MLB-[^"]+)"/i);
+            // Strategy 3: ALWAYS fetch the real product page for definitive data (especially og:image)
+            const productLinkRegex = /href="(https?:\/\/(?:www\.|produto\.)?mercadolivre\.com\.br\/(?:p\/|MLB-)[^"]+)"/i;
+            const productLinkMatch = html.match(productLinkRegex) || html.match(/href="([^"]+\/(?:MLB-|p\/)[^" ]+)"/i);
 
             if (productLinkMatch) {
-                const productUrl = productLinkMatch[1].split('?')[0];
-                console.log(`[fetch-metadata] Fetching product page for definitive data: ${productUrl}`);
+                let productUrl = productLinkMatch[1];
+                if (productUrl.startsWith('/')) productUrl = `https://www.mercadolivre.com.br${productUrl}`;
+                productUrl = productUrl.split('?')[0];
+
+                console.log(`[fetch-metadata] Strategy 3: Fetching real product page for definitive image: ${productUrl}`);
                 try {
                     const productResponse = await fetch(productUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
                     const productHtml = await productResponse.text();
 
-                    // Definitive image from product page - THIS IS THE FIX
+                    // Definitive metadata from actual product page - THIS TAKES PRECEDENCE
                     const productOgImage = getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image');
                     if (productOgImage) {
-                        console.log(`[fetch-metadata] Found definitive image on product page: ${productOgImage}`);
-                        image = productOgImage;
+                        console.log(`[fetch-metadata] Found definitive image ON PRODUCT PAGE: ${productOgImage}`);
+                        image = productOgImage; // OVERWRITE whatever we had from social page
                     }
 
-                    // Definitive title
                     const productOgTitle = getMeta(productHtml, 'og:title');
-                    if (productOgTitle) {
-                        title = productOgTitle.replace(/\s*[-|:]\s*(Mercado Livre|MercadoLivre).*$/i, '').trim();
-                    }
+                    if (productOgTitle) title = productOgTitle.replace(/\s*[-|:]\s*(Mercado Livre|MercadoLivre).*$/i, '').trim();
 
-                    // Definitive price
-                    const pprice = extractPriceFromNordic(productHtml);
-                    if (pprice) price = pprice;
-                    else {
-                        const metaPrice = getMeta(productHtml, 'product:price:amount') || getMeta(productHtml, 'og:price:amount');
-                        if (metaPrice) price = parseFloat(metaPrice);
+                    if (!price) {
+                        const pPrice = extractPriceFromNordic(productHtml);
+                        if (pPrice) price = pPrice;
+                        else {
+                            const mPrice = getMeta(productHtml, 'product:price:amount') || getMeta(productHtml, 'og:price:amount');
+                            if (mPrice) price = parseFloat(mPrice);
+                        }
                     }
                 } catch (e) {
-                    console.error(`[fetch-metadata] Product page fetch error: ${e.message}`);
+                    console.error(`[fetch-metadata] Strategy 3 error: ${e.message}`);
                 }
-            } else {
-                console.log('[fetch-metadata] Could not find a specific product link on the social page.');
             }
 
             // Strategy 4: Fallback R$ price
@@ -234,10 +284,13 @@ Deno.serve(async (req: Request) => {
                 }
             }
 
-            // Strategy 5: Fallback image from CDN
+            // Strategy 5: Absolute Fallback image (only if still null)
             if (!image) {
                 const imgMatch = html.match(/(?:data-src|src)="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i);
-                if (imgMatch) image = imgMatch[1];
+                if (imgMatch) {
+                    const isBanner = imgMatch[1].includes('997606');
+                    if (!isBanner) image = imgMatch[1];
+                }
             }
 
             return new Response(
