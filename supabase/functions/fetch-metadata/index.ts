@@ -8,6 +8,8 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
 // Generate SHA256 signature for Shopee Affiliate API
 async function generateSignature(appId: string, timestamp: number, payload: string, secret: string) {
     const baseString = `${appId}${timestamp}${payload}${secret}`;
@@ -49,6 +51,66 @@ async function convertToShortLink(appId: string, secret: string, originUrl: stri
     }
 }
 
+// Helper to extract meta tags from HTML
+function getMeta(html: string, prop: string): string | null {
+    const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
+    const m1 = html.match(r1);
+    if (m1) return m1[1];
+    const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
+    const m2 = html.match(r2);
+    return m2 ? m2[1] : null;
+}
+
+// Fetch HTML from a URL with browser-like headers
+async function fetchPage(url: string): Promise<{ html: string; finalUrl: string }> {
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': BROWSER_UA,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+        redirect: 'follow',
+    });
+    return { html: await response.text(), finalUrl: response.url || url };
+}
+
+// Extract product data from a standard product page HTML
+function extractProductData(html: string) {
+    let title = getMeta(html, 'og:title') || getMeta(html, 'twitter:title') || getMeta(html, 'title') || '';
+    if (!title || title.length < 5) {
+        const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i) || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+        if (tag) title = tag[1].trim();
+    }
+    // Clean store names from title
+    title = title.replace(/\s*[-|:]\s*(Amazon|Mercado Livre|Shopee|Meli|Aliexpress|Perfil Social).*$/i, '').trim();
+
+    let image = getMeta(html, 'og:image') || getMeta(html, 'twitter:image') || '';
+
+    let price: string | null = getMeta(html, 'product:price:amount') || getMeta(html, 'og:price:amount') || null;
+    // Specialized price parsing
+    if (!price || price === '0' || price === '0.00' || price === '') {
+        const priceMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i) ||
+            html.match(/itemprop="price" content="([\d.,]+)"/i) ||
+            html.match(/class="andes-money-amount__fraction">([\d.]+)<\/span>/i) ||
+            html.match(/id="priceblock_ourprice"[^>]*>R\$\s*([\d.,]+)/i) ||
+            html.match(/id="priceblock_dealprice"[^>]*>R\$\s*([\d.,]+)/i) ||
+            html.match(/class="a-offscreen">R\$\s*([\d.,]+)/i) ||
+            html.match(/class="a-price-whole">([\d.,]+)/i);
+        if (priceMatch) price = priceMatch[1];
+    }
+
+    if (price) {
+        price = price.replace(/[^\d.,]/g, '').replace(',', '.');
+        if (price.split('.').length > 2) {
+            const parts = price.split('.');
+            const cents = parts.pop();
+            price = parts.join('') + '.' + cents;
+        }
+    }
+
+    return { title, image, price };
+}
+
 Deno.serve(async (req: Request) => {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
@@ -62,9 +124,9 @@ Deno.serve(async (req: Request) => {
         console.log(`Fetching metadata for: ${url} (User: ${userId || 'anonymous'})`);
 
         let finalUrl = url;
-        let apiTitle = null;
-        let apiPrice = null;
-        let apiImage = null;
+        let apiTitle: string | null = null;
+        let apiPrice: string | null = null;
+        let apiImage: string | null = null;
 
         // --- SHOPEE ID EXTRACTION ---
         if (url.includes('shopee.com.br')) {
@@ -108,82 +170,86 @@ Deno.serve(async (req: Request) => {
             }
         }
 
-        // --- MERCADO LIVRE SOCIAL PROFILE HANDLING ---
-        if (finalUrl.includes('meli.la') || finalUrl.includes('mercadolivre.com.br/social/')) {
+        // --- MERCADO LIVRE: HANDLE SOCIAL PROFILE PAGES ---
+        // meli.la links always redirect to /social/ profile pages, NOT product pages.
+        // We must fetch the social page and find the real product link inside it.
+        if (finalUrl.includes('meli.la') || finalUrl.includes('/social/')) {
+            console.log('ML Social Profile detected, fetching social page to find product link...');
             try {
-                const socialRes = await fetch(finalUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1' }
-                });
-                const socialHtml = await socialRes.text();
-                const matchLink = socialHtml.match(/href="([^"]+)"[^>]*>Ir para produto<\/a>/i) ||
-                    socialHtml.match(/class="[^"]*poly-component__link--action-link[^"]*"[^>]*href="([^"]+)"/i);
-                if (matchLink) {
-                    finalUrl = matchLink[1].split('?')[0];
-                    console.log('Redirecting to real ML product URL:', finalUrl);
+                const { html: socialHtml, finalUrl: socialFinalUrl } = await fetchPage(finalUrl);
+                finalUrl = socialFinalUrl; // Update to the redirected URL
+
+                console.log('Social page final URL:', socialFinalUrl);
+
+                // Strategy 1: Find the "Ir para produto" link
+                const productLinkMatch =
+                    socialHtml.match(/href="(https?:\/\/produto\.mercadolivre\.com\.br\/[^"]+)"/i) ||
+                    socialHtml.match(/href="(https?:\/\/[^"]*mercadolivre[^"]*\/MLB[^"]+)"/i) ||
+                    socialHtml.match(/href="([^"]+)"[^>]*>\s*Ir para produto/i) ||
+                    socialHtml.match(/poly-component__link--action-link[^>]*href="([^"]+)"/i);
+
+                if (productLinkMatch) {
+                    const realProductUrl = productLinkMatch[1].split('?')[0]; // Clean tracking params
+                    console.log('Found real product URL:', realProductUrl);
+
+                    // Now fetch the REAL product page to get proper metadata
+                    const { html: productHtml, finalUrl: productFinalUrl } = await fetchPage(realProductUrl);
+                    const productData = extractProductData(productHtml);
+
+                    console.log('Product data extracted:', { title: productData.title, price: productData.price, hasImage: !!productData.image });
+
+                    return new Response(
+                        JSON.stringify({
+                            title: decodeHtmlEntities(productData.title) || 'Produto sem título',
+                            image: productData.image || '',
+                            price: productData.price ? parseFloat(productData.price) : null,
+                            platform: 'Mercado Livre',
+                            finalUrl: url, // Keep the ORIGINAL meli.la link as the affiliate link
+                        }),
+                        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
                 }
-            } catch (e) {
-                console.warn('ML Social redirect failed');
+
+                // Strategy 2: Extract product data directly from the social page HTML
+                console.log('No product link found, trying to extract from social page directly...');
+                const socialTitle = socialHtml.match(/class="[^"]*poly-component__title[^"]*"[^>]*>([^<]+)</i) ||
+                    socialHtml.match(/class="[^"]*poly-card__title[^"]*"[^>]*>([^<]+)</i);
+                const socialPrice = socialHtml.match(/class="[^"]*poly-price__current[^"]*"[^>]*>\s*\$?\s*([\d.,]+)/i) ||
+                    socialHtml.match(/class="[^"]*andes-money-amount__fraction[^"]*">([\d.]+)/i);
+                const socialImage = socialHtml.match(/class="[^"]*poly-component__picture[^"]*"[^>]*src="([^"]+)"/i) ||
+                    socialHtml.match(/<img[^>]+class="[^"]*poly[^"]*"[^>]*src="([^"]+)"/i) ||
+                    getMeta(socialHtml, 'og:image');
+
+                if (socialTitle) {
+                    return new Response(
+                        JSON.stringify({
+                            title: decodeHtmlEntities(socialTitle[1].trim()),
+                            image: typeof socialImage === 'string' ? socialImage : (socialImage ? socialImage[1] : ''),
+                            price: socialPrice ? parseFloat(socialPrice[1].replace(',', '.')) : null,
+                            platform: 'Mercado Livre',
+                            finalUrl: url,
+                        }),
+                        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+            } catch (socialErr: any) {
+                console.error('ML Social extraction failed:', socialErr.message);
+                // Fall through to generic scraping
             }
         }
 
-        // --- GENERIC SCRAPING ---
-        const response = await fetch(finalUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            },
-            redirect: 'follow',
-        });
+        // --- GENERIC SCRAPING (for Amazon, direct ML links, etc.) ---
+        const { html, finalUrl: scrapedFinalUrl } = await fetchPage(finalUrl);
+        finalUrl = scrapedFinalUrl;
 
-        finalUrl = response.url || finalUrl;
-        const html = await response.text();
+        const productData = extractProductData(html);
+        let { title, image, price } = productData;
 
-        // Helper to extract meta tags
-        const getMeta = (prop: string): string | null => {
-            const r1 = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
-            const m1 = html.match(r1);
-            if (m1) return m1[1];
-            const r2 = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i');
-            const m2 = html.match(r2);
-            return m2 ? m2[1] : null;
-        };
-
-        let title = apiTitle || getMeta('og:title') || getMeta('twitter:title') || getMeta('title') || '';
-        if (!title || title.length < 5) {
-            const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i) || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-            if (tag) title = tag[1].trim();
-        }
-
-        // Clean title
-        title = title.replace(/\s*[-|:]\s*(Amazon|Mercado Livre|Shopee|Meli|Aliexpress).*$/i, '').trim();
-
-        let image = apiImage || getMeta('og:image') || getMeta('twitter:image') || '';
-        let price = apiPrice || getMeta('product:price:amount') || getMeta('og:price:amount') || null;
-
-        // Specialized price parsing for ML and Amazon
-        if (!price || price === '0' || price === '0.00' || price === '') {
-            const mlMatch = html.match(/"current_price"\s*:\s*\{\s*"value"\s*:\s*([\d.]+)/i) ||
-                html.match(/class="andes-visual-price__amount">([\d.,]+)<\/span>/i) ||
-                html.match(/itemprop="price" content="([\d.,]+)"/i);
-            if (mlMatch) price = mlMatch[1];
-
-            if (!price) {
-                const amzMatch = html.match(/id="priceblock_ourprice"[^>]*>R\$\s*([\d.,]+)/i) ||
-                    html.match(/id="priceblock_dealprice"[^>]*>R\$\s*([\d.,]+)/i) ||
-                    html.match(/class="a-offscreen">R\$\s*([\d.,]+)/i) ||
-                    html.match(/class="a-price-whole">([\d.,]+)/i);
-                if (amzMatch) price = amzMatch[1];
-            }
-        }
-
-        if (price) {
-            price = price.replace(/[^\d.,]/g, '').replace(',', '.');
-            if (price.split('.').length > 2) {
-                const parts = price.split('.');
-                const cents = parts.pop();
-                price = parts.join('') + '.' + cents;
-            }
-        }
+        // Use API data if available (for Shopee)
+        title = apiTitle || title;
+        image = apiImage || image;
+        price = apiPrice || price;
 
         let platform = 'Other';
         const combined = (url + ' ' + finalUrl).toLowerCase();
@@ -197,7 +263,7 @@ Deno.serve(async (req: Request) => {
                 image: image || '',
                 price: price ? parseFloat(price) : null,
                 platform,
-                finalUrl,
+                finalUrl: (platform === 'Mercado Livre' || platform === 'Amazon') ? url : finalUrl,
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
