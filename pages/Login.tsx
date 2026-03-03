@@ -109,7 +109,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
         className={`absolute top-6 right-6 p-3 rounded-xl transition-all z-20
           ${theme === 'dark'
             ? 'bg-slate-700/50 text-yellow-400 hover:bg-slate-700'
-            : 'bg-white/80 text-slate-600 hover:bg-white shadow-lg'}`}
+            : 'bg-[var(--color-bg-card)]/80 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card)] shadow-lg'}`}
       >
         {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
       </button>
@@ -126,10 +126,10 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
           <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/30 mb-4">
             <Zap className="text-white w-9 h-9 fill-current" />
           </div>
-          <h1 className={`text-3xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`text-3xl font-bold tracking-tight text-[var(--color-text-main)]`}>
             Flow Master <span className="text-emerald-500">Afiliado</span>
           </h1>
-          <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p className={`mt-2 text-sm text-[var(--color-text-muted)]`}>
             Gerencie e automatize seus links de afiliado
           </p>
         </div>
@@ -161,8 +161,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
 
         {/* Form Card */}
         <div className={`mt-6 py-8 px-6 shadow-2xl sm:rounded-2xl border backdrop-blur-xl
-          ${theme === 'dark' ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white/90 border-slate-200'}`}>
-          <h2 className={`text-xl font-semibold mb-6 text-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+          ${theme === 'dark' ? 'bg-slate-800/60 border-slate-700/50' : 'bg-[var(--color-bg-card)]/90 border-[var(--color-border)]'}`}>
+          <h2 className={`text-xl font-semibold mb-6 text-center text-[var(--color-text-main)]`}>
             {mode === 'signin' ? 'Acesse sua conta' : mode === 'signup' ? 'Crie sua conta gratuita' : mode === 'reset' ? 'Redefinir Senha' : 'Recuperar senha'}
           </h2>
 
@@ -183,7 +183,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
                   className={`appearance-none block w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
                     ${theme === 'dark'
                       ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500'
-                      : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'}`}
+                      : 'bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-main)] placeholder-[var(--color-text-muted)]'}`}
                 />
               </div>
             )}
