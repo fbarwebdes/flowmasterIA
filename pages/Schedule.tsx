@@ -223,8 +223,7 @@ export const Schedule: React.FC = () => {
             className={`relative w-16 h-8 rounded-full transition-all duration-300 flex-shrink-0 ${config.isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
               }`}
           >
-            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${config.isActive ? 'left-9' : 'left-1'
-              }`} />
+            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${config.isActive ? 'left-9' : 'left-1'}`} />
           </button>
         </div>
       </div>
@@ -361,7 +360,7 @@ export const Schedule: React.FC = () => {
           <button
             onClick={handleTestSend}
             disabled={sendingTest}
-            className="bg-white text-indigo-700 font-extrabold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-base w-full sm:w-auto"
+            className="bg-[var(--color-bg-card)] text-indigo-700 dark:text-indigo-300 font-extrabold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-base w-full sm:w-auto border border-[var(--color-border)]"
           >
             {sendingTest ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
             {sendingTest ? 'Enviando...' : 'Testar Agora!'}

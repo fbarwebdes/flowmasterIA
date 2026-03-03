@@ -277,13 +277,13 @@ export const Products: React.FC = () => {
     <div className="space-y-4 sm:space-y-6 relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Produtos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Produtos</h1>
           <p className="text-slate-500 mt-1 text-sm sm:text-base">Gerencie seus links e itens de afiliado.</p>
         </div>
         <div className="flex space-x-2 sm:space-x-3">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium text-sm"
+            className="bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-main)] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition-colors font-medium text-sm"
           >
             <RefreshCw size={18} />
             <span className="hidden sm:inline">Importar Vendas</span>
@@ -330,13 +330,12 @@ export const Products: React.FC = () => {
             onClick={() => setPlatformFilter(tab.id as any)}
             className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0 ${platformFilter === tab.id
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              : 'bg-[var(--color-bg-card)] text-[var(--color-text-muted)] border border-[var(--color-border)] hover:bg-[var(--color-bg-main)]'
               }`}
           >
             <span>{tab.label}</span>
             {tab.count > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${platformFilter === tab.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                }`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${platformFilter === tab.id ? 'bg-white/20 text-white' : 'bg-[var(--color-bg-main)] text-[var(--color-text-muted)]'}`}>
                 {tab.count}
               </span>
             )}
@@ -345,7 +344,7 @@ export const Products: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-wrap gap-2 sm:gap-4 bg-[var(--color-bg-card)] p-3 sm:p-4 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div className="flex-1 min-w-[150px] relative">
           <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
           <input
@@ -384,12 +383,12 @@ export const Products: React.FC = () => {
       </div>
 
       {/* Desktop Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden md:block">
+      <div className="bg-[var(--color-bg-card)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[var(--color-bg-main)] border-b border-[var(--color-border)]">
               <tr>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 w-10">
+                <th className="px-4 lg:px-6 py-4 font-medium text-[var(--color-text-muted)] w-10">
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
@@ -397,28 +396,32 @@ export const Products: React.FC = () => {
                     onChange={toggleAllSelection}
                   />
                 </th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Produto</th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Plataforma</th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500">Status</th>
-                <th className="px-4 lg:px-6 py-4 font-medium text-slate-500 text-right">Ações</th>
+                <th className="px-6 py-4 font-medium text-[var(--color-text-muted)]">Produto</th>
+                <th className="px-6 py-4 font-medium text-[var(--color-text-muted)]">Preço</th>
+                <th className="px-6 py-4 font-medium text-[var(--color-text-muted)]">Status</th>
+                <th className="px-6 py-4 font-medium text-[var(--color-text-muted)]">Plataforma</th>
+                <th className="px-6 py-4 font-medium text-[var(--color-text-muted)] text-right px-10">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     Carregando produtos...
                   </td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     Nenhum produto encontrado. Adicione um para começar.
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={product.id}
+                    className={`hover:bg-[var(--color-bg-main)] transition-colors border-b border-[var(--color-border)] last:border-0 ${selectedProducts.has(product.id) ? 'bg-emerald-50 dark:bg-emerald-900/10' : ''} transition-colors`}
+                  >
                     <td className="px-4 lg:px-6 py-4">
                       <input
                         type="checkbox"
@@ -435,7 +438,7 @@ export const Products: React.FC = () => {
                           className="h-10 w-10 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
                         />
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-900 line-clamp-1">{product.title}</p>
+                          <p className="font-medium text-[var(--color-text-main)] line-clamp-1">{product.title}</p>
                           <a
                             href={product.affiliate_link}
                             target="_blank"
@@ -448,8 +451,8 @@ export const Products: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 lg:px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                        {product.platform}
+                      <span className="font-bold text-[var(--color-text-main)]">
+                        {product.price ? `R$ ${product.price.toFixed(2)}` : 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 lg:px-6 py-4">
@@ -458,6 +461,11 @@ export const Products: React.FC = () => {
                         : 'bg-red-100 text-red-800'
                         }`}>
                         {product.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-4 lg:px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                        {product.platform}
                       </span>
                     </td>
                     <td className="px-4 lg:px-6 py-4 text-right">
@@ -503,16 +511,16 @@ export const Products: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+          <div className="bg-[var(--color-bg-card)] rounded-xl border border-[var(--color-border)] p-8 text-center text-[var(--color-text-muted)]">
             Carregando produtos...
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+          <div className="bg-[var(--color-bg-card)] rounded-xl border border-[var(--color-border)] p-8 text-center text-[var(--color-text-muted)]">
             Nenhum produto encontrado. Adicione um para começar.
           </div>
         ) : (
           filteredProducts.map((product) => (
-            <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 space-y-3">
+            <div key={product.id} className="bg-[var(--color-bg-card)] rounded-xl border border-[var(--color-border)] shadow-sm p-3 space-y-3">
               <div className="flex items-start space-x-3">
                 <input
                   type="checkbox"
@@ -526,7 +534,7 @@ export const Products: React.FC = () => {
                   className="h-14 w-14 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900 text-sm line-clamp-2">{product.title}</p>
+                  <p className="font-medium text-[var(--color-text-main)] text-sm line-clamp-2">{product.title}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
                       {product.platform}
@@ -574,9 +582,9 @@ export const Products: React.FC = () => {
       {/* Import Modal (Shopee Auto) */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-[var(--color-bg-card)] rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-[var(--color-border)]">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900">Importar Vendas — Shopee</h3>
+              <h3 className="font-bold text-lg text-[var(--color-text-main)]">Importar Vendas — Shopee</h3>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
             <div className="p-6">
@@ -612,14 +620,14 @@ export const Products: React.FC = () => {
       {/* Quick Post Modal (Link Import) */}
       {isQuickPostOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-[var(--color-bg-card)] rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-[var(--color-border)]">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
               <div className="flex items-center space-x-2">
-                <div className="bg-white p-2 rounded-lg shadow-sm">
+                <div className="bg-[var(--color-bg-card)] p-2 rounded-lg shadow-sm border border-[var(--color-border)]">
                   <Rocket size={20} className="text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Quick Post</h2>
+                  <h2 className="text-lg font-bold text-[var(--color-text-main)]">Quick Post</h2>
                   <p className="text-xs text-emerald-700">Cole o link e importe automaticamente</p>
                 </div>
               </div>
@@ -640,7 +648,7 @@ export const Products: React.FC = () => {
                     value={quickPostLink}
                     onChange={(e) => setQuickPostLink(e.target.value)}
                     placeholder="https://..."
-                    className="flex-1 rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                    className="flex-1 min-w-[200px] pl-10 pr-4 py-2 sm:py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm"
                     onKeyDown={(e) => e.key === 'Enter' && handleQuickPostGenerate()}
                   />
                   <button
@@ -660,30 +668,30 @@ export const Products: React.FC = () => {
 
               {/* Product Preview */}
               {quickPostData && (
-                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+                <div className="bg-[var(--color-bg-main)] rounded-2xl p-5 border border-[var(--color-border)] shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-slate-800 flex items-center text-sm">
+                    <h4 className="font-bold text-[var(--color-text-main)] flex items-center text-sm">
                       <div className="bg-blue-50 p-1.5 rounded-lg mr-2">
                         <ImageIcon className="text-blue-600" size={16} />
                       </div>
                       Dados do Produto
                     </h4>
-                    <span className="px-2.5 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span className="px-2.5 py-1 bg-[var(--color-bg-main)] rounded-full text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                       {quickPostData.platform}
                     </span>
                   </div>
                   <div className="flex gap-5">
                     <div className="relative group">
                       {quickPostData.image ? (
-                        <img src={quickPostData.image} alt="Produto" className="w-24 h-24 rounded-xl object-contain bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-105" />
+                        <img src={quickPostData.image} alt="Produto" className="w-24 h-24 rounded-xl object-contain bg-[var(--color-bg-main)] border border-[var(--color-border)] shadow-sm transition-transform group-hover:scale-105" />
                       ) : (
-                        <div className="w-24 h-24 rounded-xl bg-slate-50 flex items-center justify-center border border-dashed border-slate-300">
-                          <ImageIcon className="text-slate-300" size={32} />
+                        <div className="w-24 h-24 rounded-xl bg-[var(--color-bg-main)] flex items-center justify-center border border-dashed border-[var(--color-border)]">
+                          <ImageIcon className="text-[var(--color-text-muted)]" size={32} />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <p className="font-semibold text-slate-900 text-sm line-clamp-2 leading-snug mb-2">{quickPostData.title}</p>
+                      <p className="font-semibold text-[var(--color-text-main)] text-sm line-clamp-2 leading-snug mb-2">{quickPostData.title}</p>
                       {/* Editable Price */}
                       <div className="mt-2 flex items-center gap-2">
                         {editingPrice ? (
@@ -736,10 +744,10 @@ export const Products: React.FC = () => {
                     {/* Chat Bubble decoration */}
                     <div className="absolute -left-2 top-0 w-3 h-3 bg-white rotate-45 transform origin-top-right"></div>
 
-                    <div className="bg-white rounded-2xl rounded-tl-none shadow-sm p-4 max-w-full sm:max-w-[90%] whitespace-pre-wrap text-sm break-words relative border-l-4 border-green-500/20">
+                    <div className="bg-[var(--color-bg-card)] rounded-2xl rounded-tl-none shadow-sm p-4 max-w-full sm:max-w-[90%] whitespace-pre-wrap text-sm break-words relative border-l-4 border-emerald-500/20 text-[var(--color-text-main)]">
                       {quickPostData.image && (
-                        <div className="mb-3 rounded-lg overflow-hidden border border-slate-100 shadow-inner">
-                          <img src={quickPostData.image} alt="" className="w-full h-48 object-contain bg-white" />
+                        <div className="mb-3 rounded-lg overflow-hidden border border-[var(--color-border)] shadow-inner">
+                          <img src={quickPostData.image} alt="" className="w-full h-48 object-contain bg-[var(--color-bg-main)]" />
                         </div>
                       )}
                       <div className="text-slate-800 leading-relaxed font-normal">
@@ -766,7 +774,7 @@ export const Products: React.FC = () => {
                         navigator.clipboard.writeText(text);
                         alert('Copiado para a área de transferência!');
                       }}
-                      className="flex-1 text-sm bg-white text-slate-700 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2 font-bold shadow-sm"
+                      className="flex-1 text-sm bg-[var(--color-bg-card)] text-[var(--color-text-main)] border border-[var(--color-border)] py-3 rounded-xl hover:bg-[var(--color-bg-main)] transition-all flex items-center justify-center gap-2 font-bold shadow-sm"
                     >
                       <Copy size={16} /> Copiar
                     </button>
@@ -787,10 +795,10 @@ export const Products: React.FC = () => {
 
             {/* Save Footer - Moved inside the modal container */}
             {quickPostData && (
-              <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
+              <div className="p-5 border-t border-[var(--color-border)] bg-[var(--color-bg-main)] flex items-center justify-between gap-4">
                 <button
                   onClick={resetQuickPost}
-                  className="px-4 py-3 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+                  className="px-4 py-3 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] text-sm font-medium transition-colors"
                 >
                   Novo Link
                 </button>
@@ -820,14 +828,14 @@ export const Products: React.FC = () => {
       {/* Schedule Modal */}
       {isScheduleModalOpen && selectedProductForSchedule && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-purple-50">
+          <div className="bg-[var(--color-bg-card)] rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-[var(--color-border)] flex justify-between items-center bg-purple-50">
               <div className="flex items-center space-x-2">
-                <div className="bg-white p-2 rounded-lg shadow-sm">
+                <div className="bg-[var(--color-bg-card)] p-2 rounded-lg shadow-sm border border-[var(--color-border)]">
                   <Calendar size={20} className="text-purple-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Agendar Envio</h2>
+                  <h2 className="text-lg font-bold text-[var(--color-text-main)]">Agendar Envio</h2>
                   <p className="text-xs text-purple-700">WhatsApp Automático</p>
                 </div>
               </div>
@@ -836,28 +844,28 @@ export const Products: React.FC = () => {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-[var(--color-bg-main)] rounded-lg">
                 <img src={selectedProductForSchedule.image} alt="" className="w-12 h-12 rounded-lg object-cover" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900 truncate">{selectedProductForSchedule.title}</p>
+                  <p className="font-medium text-[var(--color-text-main)] truncate">{selectedProductForSchedule.title}</p>
                   <p className="text-sm text-emerald-600 font-semibold">{formatCurrency(selectedProductForSchedule.price)}</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--color-text-main)] mb-2">
                   <Clock size={16} className="inline mr-1" /> Data e Hora
                 </label>
                 <input
                   type="datetime-local"
                   value={scheduleTime}
                   onChange={(e) => setScheduleTime(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Frequência</label>
+                <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">Quando enviar?</label>
                 <div className="flex gap-2">
                   {[
                     { value: 'once', label: 'Uma vez' },
@@ -869,7 +877,7 @@ export const Products: React.FC = () => {
                       onClick={() => setScheduleFrequency(opt.value as 'once' | 'daily' | 'weekly')}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${scheduleFrequency === opt.value
                         ? 'bg-purple-600 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-[var(--color-bg-main)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-card)]'
                         }`}
                     >
                       {opt.label}
@@ -878,10 +886,10 @@ export const Products: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">
+            <div className="p-5 border-t border-[var(--color-border)] bg-[var(--color-bg-main)] flex justify-end space-x-3">
               <button
                 onClick={() => setIsScheduleModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors font-medium"
+                className="px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-bg-card)] transition-colors font-medium"
               >
                 Cancelar
               </button>
@@ -901,14 +909,14 @@ export const Products: React.FC = () => {
       {/* Preview Template Modal */}
       {isPreviewOpen && previewProduct && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
+          <div className="bg-[var(--color-bg-card)] rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-[var(--color-border)]">
+            <div className="p-5 border-b border-[var(--color-border)] flex justify-between items-center bg-emerald-50">
               <div className="flex items-center space-x-2">
-                <div className="bg-white p-2 rounded-lg shadow-sm">
+                <div className="bg-[var(--color-bg-card)] p-2 rounded-lg shadow-sm border border-[var(--color-border)]">
                   <Eye size={20} className="text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Template Salvo</h2>
+                  <h2 className="text-lg font-bold text-[var(--color-text-main)]">Template Salvo</h2>
                   <p className="text-xs text-emerald-700">Pronto para WhatsApp</p>
                 </div>
               </div>
@@ -917,10 +925,10 @@ export const Products: React.FC = () => {
               </button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[65vh] space-y-6">
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
-                <img src={previewProduct.image} alt="" className="w-16 h-16 rounded-xl object-cover shadow-sm border border-white" />
+              <div className="flex items-center gap-4 p-4 bg-[var(--color-bg-main)] rounded-2xl border border-[var(--color-border)] shadow-sm transition-all hover:bg-[var(--color-bg-card)]/50">
+                <img src={previewProduct.image} alt="" className="w-16 h-16 rounded-xl object-cover shadow-sm border border-[var(--color-border)]" />
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-900 line-clamp-2 leading-tight mb-1">{previewProduct.title}</p>
+                  <p className="font-bold text-[var(--color-text-main)] line-clamp-2 leading-tight mb-1">{previewProduct.title}</p>
                   <p className="text-xl text-emerald-600 font-extrabold">{formatCurrency(previewProduct.price)}</p>
                 </div>
               </div>
@@ -929,7 +937,7 @@ export const Products: React.FC = () => {
                 {/* WhatsApp Chat Background Simulation */}
                 <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"></div>
 
-                <div className="bg-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm text-slate-800 whitespace-pre-wrap break-words max-w-[90%] ml-auto relative z-10 border-l-4 border-emerald-500/20">
+                <div className="bg-[var(--color-bg-card)] p-4 rounded-2xl rounded-tr-none shadow-md text-sm text-[var(--color-text-main)] whitespace-pre-wrap break-words max-w-[90%] ml-auto relative z-10 border-l-4 border-emerald-500/20">
                   <div className="leading-relaxed">
                     {generateFromTemplateText(previewProduct)}
                   </div>

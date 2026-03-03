@@ -89,7 +89,7 @@ export const SalesTemplates: React.FC = () => {
                             Pré-visualização
                         </h3>
                         <div className="bg-[#e5ddd5] p-4 rounded-lg min-h-[300px] relative">
-                            <div className="bg-white p-3 rounded-lg shadow-sm text-sm text-gray-800 whitespace-pre-wrap relative max-w-[90%] before:content-[''] before:absolute before:top-0 before:-left-2 before:w-0 before:h-0 before:border-[8px] before:border-transparent before:border-t-white before:border-r-white">
+                            <div className="bg-[var(--color-bg-card)] p-4 rounded-2xl text-[var(--color-text-main)] shadow-md text-sm whitespace-pre-wrap relative max-w-[90%] border border-[var(--color-border)]">
                                 {template
                                     .replace(/{titulo}/g, 'Fone de Ouvido Bluetooth')
                                     .replace(/{preco}/g, '299,90')
