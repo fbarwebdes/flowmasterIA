@@ -206,14 +206,39 @@ Deno.serve(async (req: Request) => {
 
         // ===================== FETCH THE PAGE =====================
         const response = await fetch(url, { headers: BROWSER_HEADERS, redirect: 'follow' });
-        const finalUrl = response.url || url;
-        const html = await response.text();
+        let finalUrl = response.url || url;
+        let html = await response.text();
 
-        console.log(`[fetch-metadata] Final URL: ${finalUrl} | HTML: ${html.length} bytes`);
+        console.log(`[fetch-metadata] Fetched: URL=${url} => finalUrl=${finalUrl} | HTML=${html.length} bytes`);
 
-        // ===================== ML SOCIAL PAGE HANDLING =====================
-        if (finalUrl.includes('/social/') || finalUrl.includes('mercadolivre.com.br/social')) {
-            console.log('[fetch-metadata] ML Social page detected, extracting product data...');
+        // Handle meta-refresh/JS redirect for tiny pages (e.g., meli.la landing pages)
+        if (html.length < 5000) {
+            const metaRefresh = html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["']\d+;\s*url=([^"'\s>]+)/i);
+            const jsRedirect = html.match(/(?:window\.)?location(?:\.href)?\s*=\s*["']([^"']+["'])/i);
+            const redirectTarget = metaRefresh?.[1] || jsRedirect?.[1]?.replace(/["']/g, '');
+
+            if (redirectTarget) {
+                let resolvedUrl = redirectTarget.trim();
+                if (resolvedUrl.startsWith('/')) resolvedUrl = `https://www.mercadolivre.com.br${resolvedUrl}`;
+                console.log(`[fetch-metadata] Following redirect from small page: ${resolvedUrl}`);
+                try {
+                    const r2 = await fetch(resolvedUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
+                    finalUrl = r2.url || resolvedUrl;
+                    html = await r2.text();
+                    console.log(`[fetch-metadata] After redirect: finalUrl=${finalUrl} | HTML=${html.length} bytes`);
+                } catch (e) {
+                    console.error(`[fetch-metadata] Redirect follow error: ${e.message}`);
+                }
+            }
+        }
+
+        // ===================== ML HANDLING =====================
+        // Detect ML by: original URL, final URL, or HTML content
+        const isML = url.includes('meli.la') || url.includes('mercadolivre.com.br') ||
+            finalUrl.includes('mercadolivre.com.br') || finalUrl.includes('meli.la') ||
+            html.includes('mercadolivre.com.br') || html.includes('mlstatic.com');
+        if (isML) {
+            console.log('[fetch-metadata] ML page detected, extracting product data...');
 
             let title: string | null = null;
             let price: number | null = null;
@@ -247,25 +272,69 @@ Deno.serve(async (req: Request) => {
                 }
             }
 
-            // Strategy 3: ALWAYS fetch the real product page for definitive data (especially og:image)
-            const productLinkRegex = /href="(https?:\/\/(?:www\.|produto\.)?mercadolivre\.com\.br\/(?:p\/|MLB-)[^"]+)"/i;
-            const productLinkMatch = html.match(productLinkRegex) || html.match(/href="([^"]+\/(?:MLB-|p\/)[^" ]+)"/i);
+            // Strategy 2.5: Direct og:image from the current page (works if this IS the product page)
+            const directOgImage = normalizeImageUrl(getMeta(html, 'og:image') || getMeta(html, 'twitter:image'));
+            if (directOgImage && !directOgImage.includes('997606')) {
+                // If this is already a product page, the og:image is the real product image
+                if (!image) {
+                    console.log(`[fetch-metadata] Strategy 2.5: Direct og:image found: ${directOgImage}`);
+                    image = directOgImage;
+                }
+            }
 
-            if (productLinkMatch) {
-                let productUrl = productLinkMatch[1];
+            // Strategy 3: Find the product link and fetch the REAL product page for definitive data
+            // Try multiple sources for finding the product URL
+            const productLinkPatterns = [
+                // Direct product links in href
+                /href="(https?:\/\/(?:www\.|produto\.)?mercadolivre\.com\.br\/[^"]*\/p\/MLB\d+[^"]*?)"/i,
+                /href="(https?:\/\/(?:www\.|produto\.)?mercadolivre\.com\.br\/MLB-[^"]+)"/i,
+                // Any href with /p/MLB pattern
+                /href="([^"]+\/p\/MLB\d+[^"]*?)"/i,
+                // Any href with /MLB- pattern
+                /href="([^"]+\/MLB-[^" ]+)"/i,
+            ];
+
+            let productUrl: string | null = null;
+            for (const pattern of productLinkPatterns) {
+                const m = html.match(pattern);
+                if (m) {
+                    productUrl = m[1];
+                    break;
+                }
+            }
+
+            // Also try og:url and canonical as product URL sources
+            if (!productUrl) {
+                const ogUrl = getMeta(html, 'og:url');
+                if (ogUrl && (ogUrl.includes('/p/MLB') || ogUrl.includes('/MLB-'))) productUrl = ogUrl;
+            }
+            if (!productUrl) {
+                const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+                if (canonical && (canonical[1].includes('/p/MLB') || canonical[1].includes('/MLB-'))) productUrl = canonical[1];
+            }
+
+            if (productUrl) {
                 if (productUrl.startsWith('/')) productUrl = `https://www.mercadolivre.com.br${productUrl}`;
                 productUrl = productUrl.split('?')[0];
 
-                console.log(`[fetch-metadata] Strategy 3: Fetching real product page for definitive image: ${productUrl}`);
+                // Only fetch if we don't already have an image OR if we need to verify
+                console.log(`[fetch-metadata] Strategy 3: Fetching real product page: ${productUrl}`);
                 try {
                     const productResponse = await fetch(productUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
                     const productHtml = await productResponse.text();
 
-                    // Definitive metadata from actual product page - THIS TAKES PRECEDENCE
+                    // Definitive metadata from actual product page - THIS TAKES ABSOLUTE PRECEDENCE
                     const productOgImage = normalizeImageUrl(getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image'));
                     if (productOgImage) {
-                        console.log(`[fetch-metadata] Found definitive image ON PRODUCT PAGE: ${productOgImage}`);
-                        image = productOgImage; // OVERWRITE whatever we had from social page
+                        console.log(`[fetch-metadata] DEFINITIVE image from product page: ${productOgImage}`);
+                        image = productOgImage; // FORCE OVERWRITE
+                    }
+
+                    // Also try to find high-res images in the product page HTML
+                    if (!image) {
+                        const hiresMatch = productHtml.match(/data-zoom="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i) ||
+                            productHtml.match(/src="(https:\/\/http2\.mlstatic\.com\/D_NQ_NP[^"]+)"/i);
+                        if (hiresMatch) image = normalizeImageUrl(hiresMatch[1]);
                     }
 
                     const productOgTitle = getMeta(productHtml, 'og:title');
