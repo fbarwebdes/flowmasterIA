@@ -282,7 +282,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
               <div className="rounded-xl bg-red-500/10 p-4 border border-red-500/30">
                 <div className="flex items-center gap-3">
                   <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-300">{error}</p>
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               </div>
             )}
@@ -291,7 +291,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onResetCom
               <div className="rounded-xl bg-emerald-500/10 p-4 border border-emerald-500/30">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />
-                  <p className="text-sm text-emerald-300">{message}</p>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300">{message}</p>
                 </div>
               </div>
             )}

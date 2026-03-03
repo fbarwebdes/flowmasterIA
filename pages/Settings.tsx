@@ -41,49 +41,49 @@ export const Settings: React.FC = () => {
         }
     };
 
-    if (loading || !settings) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
+    if (loading || !settings) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>;
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
             <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)] flex items-center gap-2">
                     Configurações
                 </h1>
-                <p className="text-slate-500 mt-1 text-sm sm:text-base">Gerencie seu perfil e templates de envio.</p>
+                <p className="text-[var(--color-text-muted)] mt-1 text-sm sm:text-base">Gerencie seu perfil e templates de envio.</p>
             </div>
 
             {errorMsg && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-shake">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl flex items-center gap-3 animate-shake">
                     <AlertTriangle size={18} />
                     <span className="text-sm font-medium">{errorMsg}</span>
                 </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-[var(--color-bg-card)] rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden">
                 <div className="p-6">
                     <div className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                             <div className="space-y-2">
-                                <label className="block text-sm font-bold text-slate-700">Nome de Exibição</label>
+                                <label className="block text-sm font-bold text-[var(--color-text-main)]">Nome de Exibição</label>
                                 <input
                                     type="text"
                                     placeholder="Seu nome"
                                     value={settings.displayName || ''}
                                     onChange={(e) => setSettings({ ...settings, displayName: e.target.value })}
-                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900 transition-all text-sm"
+                                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-main)] text-[var(--color-text-main)] px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-bold text-slate-700">E-mail</label>
-                                <input type="email" value={userEmail} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none text-slate-400 text-sm italic" />
+                                <label className="block text-sm font-bold text-[var(--color-text-main)]">E-mail</label>
+                                <input type="email" value={userEmail} disabled className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-main)] px-4 py-3 outline-none text-[var(--color-text-muted)] text-sm italic" />
                             </div>
 
                         </div>
 
-                        <div className="flex items-center justify-between py-6 border-t border-slate-100">
+                        <div className="flex items-center justify-between py-6 border-t border-[var(--color-border)]">
                             <div>
-                                <h4 className="font-bold text-slate-900 text-sm sm:text-base">Resposta Automática</h4>
-                                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Responder automaticamente quando alguém interagir com o bot.</p>
+                                <h4 className="font-bold text-[var(--color-text-main)] text-sm sm:text-base">Resposta Automática</h4>
+                                <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-0.5">Responder automaticamente quando alguém interagir com o bot.</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
@@ -92,7 +92,7 @@ export const Settings: React.FC = () => {
                                     checked={settings.autoReply}
                                     onChange={(e) => setSettings({ ...settings, autoReply: e.target.checked })}
                                 />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
+                                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                             </label>
                         </div>
                     </div>
@@ -101,7 +101,7 @@ export const Settings: React.FC = () => {
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-slate-900 text-white px-10 py-3.5 rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center font-bold shadow-lg shadow-slate-200 disabled:opacity-50 active:scale-95 min-w-[200px]"
+                            className="bg-emerald-600 text-white px-10 py-3.5 rounded-xl hover:bg-emerald-700 transition-all flex items-center justify-center font-bold shadow-lg shadow-emerald-500/20 disabled:opacity-50 active:scale-95 min-w-[200px]"
                         >
                             {saving ? <Loader2 className="animate-spin mr-2 w-5 h-5" /> : <Save size={18} className="mr-2" />}
                             <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
