@@ -61,11 +61,39 @@ function getMeta(html: string, prop: string): string | null {
     return m2 ? decodeHtmlEntities(m2[1]) : null;
 }
 
+const BANNER_EXCLUSION_LIST = [
+    '997606', // Meli+ banner
+    '817663', // Meli+ Days (MLA108097331527)
+    '999358', // Meli+ Day (MLA108027470033)
+    '108097331527',
+    '108027470033',
+    'POR-APENAS', // Price banner
+    'meli-days',
+    'logo',
+    'brand-banner'
+];
+
 function normalizeImageUrl(url: string | null): string | null {
     if (!url) return null;
     let normalized = decodeHtmlEntities(url).trim();
     if (normalized.startsWith('//')) normalized = `https:${normalized}`;
     if (!normalized.startsWith('http')) return null;
+
+    // Reject known banners
+    const lowCaseUrl = normalized.toLowerCase();
+    for (const id of BANNER_EXCLUSION_LIST) {
+        if (lowCaseUrl.includes(id.toLowerCase())) {
+            console.log(`[fetch-metadata] Image rejected as banner: ${id}`);
+            return null;
+        }
+    }
+    
+    // Reject generic brand logos or banners
+    if (lowCaseUrl.includes('banner') || lowCaseUrl.includes('logo') || lowCaseUrl.includes('venda-com-a-gente')) {
+        console.log(`[fetch-metadata] Image rejected as generic/banner: ${normalized}`);
+        return null;
+    }
+
     return normalized;
 }
 
@@ -266,19 +294,17 @@ Deno.serve(async (req: Request) => {
                 if (!title) title = socialData.title || null;
                 if (!price && socialData.price) price = socialData.price;
                 if (!image) {
-                    // Exclude the Meli+ banner specifically
-                    const isBanner = socialData.image?.includes('997606') || socialData.image?.includes('POR-APENAS');
-                    if (!isBanner) image = socialData.image || null;
+                    image = socialData.image || null;
                 }
             }
 
-            // Strategy 2.5: Direct og:image from the current page (works if this IS the product page)
-            const directOgImage = normalizeImageUrl(getMeta(html, 'og:image') || getMeta(html, 'twitter:image'));
-            if (directOgImage && !directOgImage.includes('997606')) {
-                // If this is already a product page, the og:image is the real product image
-                if (!image) {
-                    console.log(`[fetch-metadata] Strategy 2.5: Direct og:image found: ${directOgImage}`);
-                    image = directOgImage;
+            // Strategy 2.5: Direct og:image from the current page
+            const currentOgImage = normalizeImageUrl(getMeta(html, 'og:image') || getMeta(html, 'twitter:image'));
+            if (currentOgImage) {
+                console.log(`[fetch-metadata] Strategy 2.5: og:image found: ${currentOgImage}`);
+                // If the og:image contains D_NQ_NP and the previous image didn't, upgrade it
+                if (!image || (currentOgImage.includes('D_NQ_NP') && !image.includes('D_NQ_NP'))) {
+                    image = currentOgImage;
                 }
             }
 
@@ -327,14 +353,25 @@ Deno.serve(async (req: Request) => {
                     const productOgImage = normalizeImageUrl(getMeta(productHtml, 'og:image') || getMeta(productHtml, 'twitter:image'));
                     if (productOgImage) {
                         console.log(`[fetch-metadata] DEFINITIVE image from product page: ${productOgImage}`);
-                        image = productOgImage; // FORCE OVERWRITE
+                        // Prioritize high-res version if available in meta tags
+                        if (productOgImage.includes('D_NQ_NP')) {
+                            image = productOgImage.replace(/_(\d+x\d+)/, '_2X').replace(/(_[A-Z]\.webp)$/, '_O.webp');
+                        } else {
+                            image = productOgImage;
+                        }
                     }
 
-                    // Also try to find high-res images in the product page HTML
-                    if (!image) {
-                        const hiresMatch = productHtml.match(/data-zoom="(https:\/\/http2\.mlstatic\.com\/D_[^"]+)"/i) ||
-                            productHtml.match(/src="(https:\/\/http2\.mlstatic\.com\/D_NQ_NP[^"]+)"/i);
-                        if (hiresMatch) image = normalizeImageUrl(hiresMatch[1]);
+                    // Scan the product page for the main gallery image if meta failed or we want to double check
+                    if (!image || !image.includes('D_NQ_NP')) {
+                        const galleryMatch = productHtml.match(/src="(https:\/\/http2\.mlstatic\.com\/D_NQ_NP_[^"]+)"/i) ||
+                                           productHtml.match(/data-src="(https:\/\/http2\.mlstatic\.com\/D_NQ_NP_[^"]+)"/i);
+                        if (galleryMatch) {
+                            const galleryImg = normalizeImageUrl(galleryMatch[1]);
+                            if (galleryImg) {
+                                image = galleryImg.replace(/_(\d+x\d+)/, '_2X').replace(/(_[A-Z]\.webp)$/, '_O.webp');
+                                console.log(`[fetch-metadata] Gallery image found: ${image}`);
+                            }
+                        }
                     }
 
                     const productOgTitle = getMeta(productHtml, 'og:title');
