@@ -6,9 +6,13 @@ const SETTINGS_KEY = 'flowmaster_settings';
 // ================= PRODUCTS =================
 
 export const fetchProducts = async (): Promise<Product[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('products')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -31,9 +35,13 @@ export const fetchProducts = async (): Promise<Product[]> => {
 };
 
 export const saveProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { data, error } = await supabase
     .from('products')
     .insert({
+      user_id: user.id,
       title: product.title,
       price: product.price,
       image: product.image,
@@ -70,6 +78,9 @@ export const saveProduct = async (product: Omit<Product, 'id'>): Promise<Product
 };
 
 export const updateProduct = async (product: Product): Promise<Product> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('products')
     .update({
@@ -81,7 +92,8 @@ export const updateProduct = async (product: Product): Promise<Product> => {
       active: product.active,
       sales_copy: product.salesCopy || ''
     })
-    .eq('id', product.id);
+    .eq('id', product.id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('Error updating product:', error);
@@ -92,10 +104,14 @@ export const updateProduct = async (product: Product): Promise<Product> => {
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('products')
     .delete()
-    .eq('id', productId);
+    .eq('id', productId)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('Error deleting product:', error);
@@ -108,13 +124,16 @@ export const deleteProduct = async (productId: string): Promise<void> => {
 
 // Delete all products by platform (or all if no platform specified)
 export const deleteAllProducts = async (platform?: string): Promise<number> => {
-  let query = supabase.from('products').delete();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  let query = supabase.from('products').delete().eq('user_id', user.id);
 
   if (platform && platform !== 'all') {
     query = query.eq('platform', platform);
   } else {
-    // Delete products where id is not null (all products)
-    query = query.neq('id', '00000000-0000-0000-0000-000000000000');
+    // Delete products where id is not null (all products for this user)
+    query = query.not('id', 'is', null);
   }
 
   const { error, count } = await query.select('id');
@@ -133,12 +152,16 @@ export const deleteAllProducts = async (platform?: string): Promise<number> => {
 // ================= SCHEDULES =================
 
 export const fetchSchedules = async (): Promise<Schedule[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('schedules')
     .select(`
       *,
       products (id, title, image)
     `)
+    .eq('user_id', user.id)
     .order('scheduled_time', { ascending: true });
 
   if (error) {
@@ -203,9 +226,13 @@ export const fetchSchedules = async (): Promise<Schedule[]> => {
 };
 
 export const createSchedule = async (schedule: Omit<Schedule, 'id'>): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('schedules')
     .insert({
+      user_id: user.id,
       product_id: schedule.productId === 'all' ? null : schedule.productId,
       product_title: schedule.productTitle || '',
       product_image: schedule.productImage || '',
@@ -222,10 +249,14 @@ export const createSchedule = async (schedule: Omit<Schedule, 'id'>): Promise<vo
 };
 
 export const deleteSchedule = async (id: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('schedules')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('Error deleting schedule:', error);
@@ -234,10 +265,14 @@ export const deleteSchedule = async (id: string): Promise<void> => {
 };
 
 export const deleteSchedules = async (ids: string[]): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('schedules')
     .delete()
-    .in('id', ids);
+    .in('id', ids)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('Error deleting schedules:', error);

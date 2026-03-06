@@ -31,6 +31,7 @@ export interface Product {
   salesCopy?: string;
   externalId?: string; // ID on the source platform
   source?: IntegrationId; // Where it was imported from
+  userId?: string;
 }
 
 export interface DashboardStats {
@@ -68,6 +69,7 @@ export interface Schedule {
   status: 'pending' | 'sent' | 'failed';
   platform: 'WhatsApp' | 'Telegram' | 'Instagram';
   frequency?: 'once' | 'daily' | 'weekly'; // New field for advanced scheduling
+  userId?: string;
 }
 
 export interface AppSettings {
